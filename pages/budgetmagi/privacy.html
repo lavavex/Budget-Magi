@@ -37,6 +37,8 @@
 
   <p><strong>Plaid (if you link a bank).</strong> Budget Magi connects to your bank through Plaid using Plaid keys from your own Plaid account. You sign in to your bank inside Plaid Link, and the app never sees your bank username or password. The app requests transactions and, where supported, credit card details such as due dates and interest rates. Plaid handles this data under its <a href="https://plaid.com/legal/#end-user-privacy-policy">End User Privacy Policy</a>.</p>
 
+  <p><strong>Apple Wallet (if you connect Apple Card).</strong> With your permission, Budget Magi reads your Apple Card balance and transactions from Wallet on your iPhone. This data comes from your device, not from a server, and it stays on your device like the rest.</p>
+
   <p><strong>Apple Intelligence.</strong> Ask, the "Why?" summaries, AI search, and category suggestions use Apple's on-device model. That data stays on your device.</p>
 
   <p><strong>Webhook and redirect.</strong> When you link a bank, Plaid is told to send status notifications to a small service run by the developer on Cloudflare. It acknowledges each notification and discards it without reading, logging, or storing it. These notifications contain identifiers such as a Plaid item ID, not your transactions. After some bank logins, your browser may also briefly visit a page on budgetmagi.pages.dev that returns you to the app. Cloudflare, which runs both, may process technical data such as IP addresses under its own policies.</p>
@@ -50,6 +52,7 @@
   <ul>
     <li>Remove a bank in Settings to delete its access token from the device. You can also remove it from your Plaid account.</li>
     <li>Clear chat history with the Clear chat button in Ask.</li>
+    <li>Disconnect Apple Card in Settings, or turn off Budget Magi under Privacy &amp; Security → Wallet in iPhone Settings.</li>
     <li>Use Settings → Erase All Data to delete all of the app's data on this device, including banks and keys. It asks you to type DELETE first.</li>
     <li>Deleting the app removes its data from this device. iOS can keep Keychain items after an app is deleted, so remove your banks and keys in the app first.</li>
     <li>To delete data already held by Plaid, contact Plaid or use your account with them.</li>

@@ -107,7 +107,7 @@ A **monthly cap**, **expected income**, and **per-category limits** compared to 
 
 ## Not included
 
-- Apple Card (Plaid does not sync it)
+- Apple Cash and Apple Savings (Apple Card is covered: see [Settings](settings.md))
 - Push alerts when you go over budget (the Budget tab still shows remaining / over)
 - Automatic sync to another iPhone (use backup, or Sync from Plaid on that phone)
 - A Budget Magi server that holds your Plaid secret (keys stay on the phone)

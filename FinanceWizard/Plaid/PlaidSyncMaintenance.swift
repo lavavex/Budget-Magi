@@ -183,7 +183,8 @@ extension PlaidSyncEngine {
         let all = (try? modelContext.fetch(FetchDescriptor<BankAccount>())) ?? []
         var removed = 0
         for account in all {
-            if linkedIds.contains(account.itemId) { continue }
+            // Apple Card comes from Wallet, not a Plaid Item.
+            if linkedIds.contains(account.itemId) || account.itemId == WalletSync.itemId { continue }
             modelContext.delete(account)
             removed += 1
         }

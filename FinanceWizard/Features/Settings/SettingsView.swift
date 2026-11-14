@@ -37,6 +37,8 @@ struct SettingsView: View {
     @State private var plaidBackupShareURL: URL?
     @State private var showPlaidBackupShare = false
     @State private var pendingRestoreURL: URL?
+    @State private var appleCardConnected = WalletSync.isConnected
+    @State private var appleCardError: String?
     @State private var pendingRestorePayload: PlaidConnectionBackup.Payload?
     @State private var showRestorePlanSheet = false
     @State private var restorePolicy: PlaidConnectionBackup.RestorePolicy = .safeMerge
@@ -190,6 +192,44 @@ struct SettingsView: View {
                     .disabled(!PlaidCredentialsStore.isConfigured)
                 } header: {
                     Text("Linked banks")
+                }
+
+                // MARK: Apple Card
+                if WalletSync.isAvailable, !sampleData.isActive {
+                    Section {
+                        if appleCardConnected {
+                            LabeledContent("Apple Card") {
+                                Text("Connected").foregroundStyle(.green)
+                            }
+                            Button("Disconnect Apple Card", role: .destructive) {
+                                WalletSync.disconnect(modelContext: modelContext)
+                                appleCardConnected = false
+                            }
+                        } else {
+                            Button {
+                                Task {
+                                    do {
+                                        try await WalletSync.connect()
+                                        appleCardConnected = true
+                                        try await WalletSync.sync(modelContext: modelContext)
+                                    } catch {
+                                        appleCardError = error.localizedDescription
+                                    }
+                                }
+                            } label: {
+                                Label("Connect Apple Card", systemImage: "creditcard")
+                            }
+                        }
+                        if let appleCardError {
+                            Text(appleCardError)
+                                .font(.caption)
+                                .foregroundStyle(.orange)
+                        }
+                    } header: {
+                        Text("Apple Card")
+                    } footer: {
+                        Text("Reads your Apple Card balance and transactions from Wallet on this iPhone. Nothing is sent anywhere, and it updates each time you Sync.")
+                    }
                 }
 
                 // MARK: Sync info

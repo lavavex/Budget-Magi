@@ -117,7 +117,13 @@ After an update improves categories, use **Sync → Full re-sync** to apply them
 
 ## Apple Card
 
-Apple Card cannot be linked. Plaid does not sync it.
+Plaid can't link Apple Card, so Budget Magi reads it from Wallet. On your iPhone, open **Settings → Connect Apple Card** and allow access when Wallet asks. The card then shows on Accounts with its balance, limit, minimum, and due date, and its transactions arrive each time you **Sync**.
+
+- The option doesn't appear on iPad or Mac, because Wallet shares this data only on iPhone.
+- If you tap Don't Allow, turn it back on in iPhone **Settings → Privacy & Security → Wallet**.
+- A payment to Apple Card from a linked bank is matched to the card's own payment line, so it isn't counted as spending.
+- Monthly installments show as **Installment** and aren't counted again as spending.
+- Apple Card Family participants aren't supported by Wallet's data sharing.
 
 ## Welcome screen
 

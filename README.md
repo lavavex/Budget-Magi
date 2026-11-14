@@ -32,7 +32,7 @@ Use the TestFlight build to try new features and report bugs before a public App
 
 ## Your data stays on the phone
 
-Bank passwords are entered only in **Plaid’s** sign-in screen. Access tokens and your Plaid secret live in the iPhone Keychain. Transactions live in SwiftData on this device (widgets read the same store). Optional encrypted backup if you want a copy you control.
+Bank passwords are entered only in **Plaid’s** sign-in screen. Apple Card comes straight from Wallet on your iPhone, with your permission. Access tokens and your Plaid secret live in the iPhone Keychain. Transactions live in SwiftData on this device (widgets read the same store). Optional encrypted backup if you want a copy you control.
 
 A free [Plaid](https://dashboard.plaid.com) account is enough to start (Sandbox uses fake test banks).
 

@@ -38,6 +38,10 @@ Plaid keys and banks are required to pull transactions. See [Getting started](ge
 
 **Settings → Erase All Data** deletes everything on this device, including banks and keys, after you type `DELETE`. It can't be undone. Backup files you saved elsewhere aren't touched, and your bank stays connected in your Plaid account until you remove it there.
 
+## Apple Card
+
+**Settings → Connect Apple Card** reads your Apple Card from Wallet on this iPhone: balance, credit limit, minimum payment, due date, and transactions. Wallet asks for permission once. Nothing is sent anywhere, and each **Sync** refreshes it. **Disconnect Apple Card** removes the card from Accounts and keeps the transactions already brought in.
+
 ## On-device AI
 
 **Settings → On-device AI** shows whether Apple Intelligence can run on this iPhone (checks when you open Settings).

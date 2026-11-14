@@ -556,6 +556,16 @@ struct AllTransactionsView: View {
             )
         }
 
+        // Apple Card first, so its payments are there for the bank rows to be matched against.
+        var walletLines: [String] = []
+        if WalletSync.isConnected {
+            do {
+                walletLines = try await WalletSync.sync(modelContext: modelContext).lines
+            } catch {
+                walletLines = ["Apple Card: \(error.localizedDescription)"]
+            }
+        }
+
         do {
             let report = try await PlaidSyncEngine.syncAll(
                 modelContext: modelContext,
@@ -573,18 +583,24 @@ struct AllTransactionsView: View {
                 setSyncStatus(
                     kind,
                     title: report.warnings.isEmpty ? "Sync complete" : "Sync finished with warnings",
-                    detail: report.summary
+                    detail: (walletLines + [report.summary]).joined(separator: "\n")
                 )
                 isSyncing = false
                 refreshToolStats()
             }
         } catch {
             await MainActor.run {
-                setSyncStatus(
-                    .failure,
-                    title: "Sync failed",
-                    detail: error.localizedDescription
-                )
+                // With only Apple Card connected there are no banks to sync, and that isn't a failure.
+                if !walletLines.isEmpty, PlaidItemStore.linkedItemIDs.isEmpty {
+                    setSyncStatus(.success, title: "Sync complete", detail: walletLines.joined(separator: "\n"))
+                    refreshToolStats()
+                } else {
+                    setSyncStatus(
+                        .failure,
+                        title: "Sync failed",
+                        detail: (walletLines + [error.localizedDescription]).joined(separator: "\n")
+                    )
+                }
                 isSyncing = false
             }
         }

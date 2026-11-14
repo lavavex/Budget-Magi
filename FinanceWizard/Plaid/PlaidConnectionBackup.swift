@@ -93,6 +93,7 @@ enum PlaidConnectionBackup {
     static func eraseEverything(modelContext: ModelContext) throws {
         try wipeLocalAppData(modelContext: modelContext)
         removeCloudAskLeftovers()
+        WalletSync.isConnected = false
     }
 
     /// Ask once offered Claude and Grok with the user's own API keys. This deletes those keys,
