@@ -154,12 +154,12 @@ struct BudgetView: View {
                 TextField("Amount", text: $categoryDraft)
                     .keyboardType(.decimalPad)
                 Button("Save") { saveCategoryEdit() }
-                Button("Remove limit", role: .destructive) {
-                    if let cat = editingCategory {
+                if let cat = editingCategory, plan?.limit(forCategory: cat) != nil {
+                    Button("Remove limit", role: .destructive) {
                         plan?.setLimit(nil, forCategory: cat)
                         try? modelContext.save()
+                        editingCategory = nil
                     }
-                    editingCategory = nil
                 }
                 Button("Cancel", role: .cancel) { editingCategory = nil }
             } message: {
@@ -186,9 +186,6 @@ struct BudgetView: View {
                         }
                         Spacer()
                         VStack(alignment: .trailing, spacing: 2) {
-                            Text(periodLabel)
-                                .font(.caption2)
-                                .foregroundStyle(.tertiary)
                             if let remaining = snapshot.totalRemaining {
                                 Text(snapshot.isOverTotal ? "Over" : "Left")
                                     .font(.caption)
@@ -262,13 +259,13 @@ struct BudgetView: View {
                         }
                     }
 
-                    Text("\(snapshot.transactionCount) expenses")
+                    Text(snapshot.transactionCount == 1 ? "1 expense" : "\(snapshot.transactionCount) expenses")
                         .font(.caption2)
                         .foregroundStyle(.tertiary)
                 }
                 .padding(.vertical, 4)
             } header: {
-                Text("This period")
+                Text(periodLabel)
             }
 
             if !cardsDueThisPeriod.isEmpty {
@@ -305,7 +302,7 @@ struct BudgetView: View {
                                 }
                                 Spacer()
                                 if included > 0.005 {
-                                    Text("Min includes \(included.formatted(.currency(code: "USD"))) installment")
+                                    Text("Includes \(included.formatted(.currency(code: "USD"))) in installments")
                                         .font(.caption2)
                                         .foregroundStyle(.tertiary)
                                 }
@@ -335,7 +332,7 @@ struct BudgetView: View {
             // MARK: Expected income
             Section {
                 if plan.expectedIncomeStreams.isEmpty {
-                    Text("Add paycheck or other regular income to power smart budgets.")
+                    Text("Add your paycheck or other regular income to see whether it's arriving on time.")
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                 } else {
@@ -350,7 +347,7 @@ struct BudgetView: View {
                     }
                     if plan.expectedMonthlyIncome > 0 {
                         HStack {
-                            Text("Est. monthly total")
+                            Text("Monthly total")
                                 .font(.subheadline.weight(.medium))
                             Spacer()
                             MoneyText(plan.expectedMonthlyIncome)
@@ -416,6 +413,10 @@ struct BudgetView: View {
                 }
 
                 Button {
+                    // Start on a category that has no limit yet, so Add never replaces one unseen.
+                    addCategoryName = KnownCategory.budgetPickerNames.first { plan.limit(forCategory: $0) == nil }
+                        ?? KnownCategory.groceries.rawValue
+                    addCategoryAmount = ""
                     showAddCategory = true
                 } label: {
                     Label("Add category limit", systemImage: "plus.circle.fill")
@@ -522,7 +523,7 @@ struct BudgetView: View {
                     }
                     Spacer()
                     if row.transactionCount > 0 {
-                        Text("\(row.transactionCount) txns")
+                        Text(row.transactionCount == 1 ? "1 charge" : "\(row.transactionCount) charges")
                             .font(.caption2)
                             .foregroundStyle(.tertiary)
                     }
@@ -545,7 +546,11 @@ struct BudgetView: View {
                         Text(name).tag(name)
                     }
                 }
-                if let cat = KnownCategory.match(for: addCategoryName) {
+                if let current = plan?.limit(forCategory: addCategoryName) {
+                    Text("\(addCategoryName) already has a \(moneyShort(current)) limit. Adding replaces it.")
+                        .font(.caption)
+                        .foregroundStyle(.orange)
+                } else if let cat = KnownCategory.match(for: addCategoryName) {
                     Text(cat.budgetHint)
                         .font(.caption)
                         .foregroundStyle(.secondary)

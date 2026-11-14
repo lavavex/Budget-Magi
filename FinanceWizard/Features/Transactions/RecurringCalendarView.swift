@@ -58,6 +58,16 @@ struct RecurringCalendarView: UIViewRepresentable {
         func dateSelection(_ selection: UICalendarSelectionSingleDate, didSelectDate dateComponents: DateComponents?) {
             selectedDay.wrappedValue = dateComponents
         }
+
+        /// Tapping the selected day again clears it, which the system calendar doesn't do itself.
+        func dateSelection(_ selection: UICalendarSelectionSingleDate, canSelectDate dateComponents: DateComponents?) -> Bool {
+            guard let tapped = dateComponents, let current = selection.selectedDate,
+                  tapped.year == current.year, tapped.month == current.month, tapped.day == current.day
+            else { return true }
+            selection.setSelected(nil, animated: true)
+            selectedDay.wrappedValue = nil
+            return false
+        }
         
         func calendarView(_ calendarView: UICalendarView, decorationFor dateComponents: DateComponents) -> UICalendarView.Decoration? {
             if chargeDays.contains(where: {

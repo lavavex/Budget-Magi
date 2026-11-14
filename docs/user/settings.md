@@ -21,7 +21,7 @@ Plaid keys and banks are required to pull transactions. See [Getting started](ge
 | Action | What happens |
 |--------|----------------|
 | **Link bank account** | Opens Plaid so you can sign in at your bank |
-| **Relink** | Use when login expired |
+| **Relink** | Use when login expired. A bank that needs it shows a **Relink** button; otherwise swipe right on the bank |
 | **Unlink** | Removes the bank from this iPhone |
 
 ## Privacy
@@ -34,13 +34,13 @@ Plaid keys and banks are required to pull transactions. See [Getting started](ge
 
 **Restore** default is **Safe merge**. It adds banks that aren’t on this phone, with their data. Banks already here keep their tokens and transactions, and Sync keeps them current. **Replace connections from backup** lets the backup’s keys, tokens, and rows win. **Wipe device, then restore** deletes local data first, then restores the backup. If that restore fails, your previous data is put back. Restore only accepts a backup from this app version.
 
-## Erase All Data
+## Erase all data
 
-**Settings → Erase All Data** deletes everything on this device, including banks and keys, after you type `DELETE`. It can't be undone. Backup files you saved elsewhere aren't touched, and your bank stays connected in your Plaid account until you remove it there.
+**Settings → Erase all data** deletes everything on this device, including banks and keys, after you type `DELETE`. It can't be undone. Backup files you saved elsewhere aren't touched, and your bank stays connected in your Plaid account until you remove it there.
 
 ## Apple Card
 
-**Settings → Connect Apple Card** reads your Apple Card from Wallet on this iPhone: balance, credit limit, minimum payment, due date, and transactions. Wallet asks for permission once. Nothing is sent anywhere, and each **Sync** refreshes it. **Disconnect Apple Card** removes the card from Accounts and keeps the transactions already brought in.
+**Settings → Connect Apple Card** shows progress while it reads the card, then what it brought in. It reads your Apple Card from Wallet on this iPhone: balance, credit limit, minimum payment, due date, and transactions. Wallet asks for permission once. Nothing is sent anywhere, and each **Sync** refreshes it. **Disconnect Apple Card** removes the card from Accounts and keeps the transactions already brought in.
 
 ## On-device AI
 
@@ -48,7 +48,7 @@ Plaid keys and banks are required to pull transactions. See [Getting started](ge
 
 ## About
 
-Version and build of the TestFlight (or App Store) binary you have installed.
+Version and build of the TestFlight (or App Store) binary you have installed, plus links to **Help & support** and the **Privacy policy**.
 
 ## Developer tools (optional)
 

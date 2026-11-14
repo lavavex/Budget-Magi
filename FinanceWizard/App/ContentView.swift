@@ -296,6 +296,9 @@ struct AllTransactionsView: View {
 
                 // Totals — spend from expenses only; income is a separate stream.
                 Section {
+                    if period != .all {
+                        PeriodStepper(period: period, referenceDate: $referenceDate)
+                    }
                     NavigationLink {
                         CategorySpendView(period: period, referenceDate: referenceDate)
                     } label: {
@@ -327,7 +330,7 @@ struct AllTransactionsView: View {
                         Spacer()
                         MoneyText(totalIncome)
                             .font(.title2.bold())
-                            .foregroundStyle(.green)
+                            .foregroundStyle(totalIncome > 0.005 ? .green : .primary)
                     }
                     HStack {
                         VStack(alignment: .leading, spacing: 4) {
@@ -340,9 +343,9 @@ struct AllTransactionsView: View {
                         Spacer()
                         MoneyText(periodNet)
                             .font(.title3.weight(.semibold))
-                            .foregroundStyle(periodNet >= 0 ? .green : .primary)
+                            .foregroundStyle(periodNet > 0.005 ? .green : .primary)
                     }
-                    Text("\(TransactionAnalytics.spendOnly(periodTransactions).count) expenses · \(periodIncome.count) income in \(period.sentenceLabel(referenceDate: referenceDate))")
+                    Text(activityLine)
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
@@ -420,7 +423,8 @@ struct AllTransactionsView: View {
                                 TransactionRowView(
                                     transaction: transaction,
                                     institutionId: matched?.institutionId,
-                                    institutionName: matched?.institutionName
+                                    institutionName: matched?.institutionName,
+                                    account: matched
                                 )
                             }
                         }
@@ -430,7 +434,8 @@ struct AllTransactionsView: View {
             .navigationTitle("Finances")
             .searchable(
                 text: $searchText,
-                placement: .navigationBarDrawer(displayMode: .automatic),
+                // Always shown: beside a side tab bar there's no pull-down hint that it exists.
+                placement: .navigationBarDrawer(displayMode: .always),
                 prompt: "Title, category, amount, last 4"
             )
             .refreshable {
@@ -529,6 +534,16 @@ struct AllTransactionsView: View {
         }
     }
 
+    private var activityLine: String {
+        let expenses = TransactionAnalytics.spendOnly(periodTransactions).count
+        let income = periodIncome.count
+        let when = period.sentenceLabel(referenceDate: referenceDate)
+        guard expenses > 0 || income > 0 else { return "No activity in \(when)" }
+        let expenseText = expenses == 1 ? "1 expense" : "\(expenses) expenses"
+        let incomeText = income == 1 ? "1 deposit" : "\(income) deposits"
+        return "\(expenseText) · \(incomeText) in \(when)"
+    }
+
     private var emptyMessage: String {
         if transactions.isEmpty {
             return "No expenses yet. Link a bank in Settings, then tap Sync."
@@ -606,58 +621,29 @@ struct AllTransactionsView: View {
             )
         }
 
-        // Apple Card first, so its payments are there for the bank rows to be matched against.
-        var walletLines: [String] = []
-        var walletNote = ""
-        if WalletSync.isConnected {
-            do {
-                walletLines = try await WalletSync.sync(modelContext: modelContext).lines
-                walletNote = " Apple Card is up to date too."
-            } catch {
-                walletLines = ["Apple Card: \(error.localizedDescription)"]
-                walletNote = " Apple Card couldn't update: \(error.localizedDescription)"
+        let outcome = await AppSync.run(
+            modelContext: modelContext,
+            resetCursors: resetCursors,
+            forceRefresh: forceRefresh
+        ) { message in
+            Task { @MainActor in
+                setSyncStatus(.running, title: "Syncing…", detail: message)
             }
         }
 
-        do {
-            let report = try await PlaidSyncEngine.syncAll(
-                modelContext: modelContext,
-                resetCursors: resetCursors,
-                includePending: true,
-                forceRefresh: forceRefresh
-            ) { message in
-                Task { @MainActor in
-                    setSyncStatus(.running, title: "Syncing…", detail: message)
-                }
-            }
-
-            await MainActor.run {
-                let kind: SyncStatusKind = report.warnings.isEmpty ? .success : .warning
-                setSyncStatus(
-                    kind,
-                    title: report.warnings.isEmpty ? "Sync complete" : "Sync finished with warnings",
-                    detail: report.headline + walletNote,
-                    counters: (walletLines + [report.summary]).joined(separator: "\n")
-                )
-                isSyncing = false
-                refreshToolStats()
-            }
-        } catch {
-            await MainActor.run {
-                // With only Apple Card connected there are no banks to sync, and that isn't a failure.
-                if !walletLines.isEmpty, PlaidItemStore.linkedItemIDs.isEmpty {
-                    setSyncStatus(.success, title: "Sync complete", detail: "Apple Card up to date.", counters: walletLines.joined(separator: "\n"))
-                    refreshToolStats()
-                } else {
-                    setSyncStatus(
-                        .failure,
-                        title: "Sync failed",
-                        detail: (walletLines + [error.localizedDescription]).joined(separator: "\n")
-                    )
-                }
-                isSyncing = false
-            }
+        if outcome.succeeded {
+            let warned = !(outcome.report?.warnings.isEmpty ?? true)
+            setSyncStatus(
+                warned ? .warning : .success,
+                title: warned ? "Sync finished with warnings" : "Sync complete",
+                detail: outcome.headline,
+                counters: outcome.counters
+            )
+            refreshToolStats()
+        } else {
+            setSyncStatus(.failure, title: "Sync failed", detail: outcome.headline)
         }
+        isSyncing = false
     }
 
     /// Review queue count is expensive; never run it in `body`.
@@ -689,7 +675,8 @@ private struct AskField: View {
 
     @State private var hintIndex = 0
 
-    static let hints = ["Ask about your money"] + OnDeviceAIChatView.promptHints
+    /// Shorter than the chat's hints, which got cut off in the Duo's small accessory bubble.
+    static let hints = ["Ask about your money", "Biggest category?", "Spent this month?", "Bills coming up?"]
 
     var body: some View {
         HStack(spacing: 8) {

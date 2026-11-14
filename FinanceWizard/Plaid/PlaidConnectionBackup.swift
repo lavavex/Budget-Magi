@@ -88,7 +88,7 @@ enum PlaidConnectionBackup {
         AskStore.wipe()
     }
 
-    /// Everything on this device, for Settings → Erase All Data.
+    /// Everything on this device, for Settings → Erase all data.
     @MainActor
     static func eraseEverything(modelContext: ModelContext) throws {
         try wipeLocalAppData(modelContext: modelContext)

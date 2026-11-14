@@ -49,6 +49,8 @@ struct PayoffPlanEditorView: View {
     @State private var linkedTransactionId: String?
     @State private var showTransactionPicker = false
     @State private var saveError: String?
+    @State private var confirmDelete = false
+    @State private var confirmPaidOff = false
 
     private var creditAccounts: [BankAccount] {
         accounts.filter(\.isCredit).sorted {
@@ -173,7 +175,7 @@ struct PayoffPlanEditorView: View {
                         Button {
                             showTransactionPicker = true
                         } label: {
-                            TransactionRowView(transaction: tx)
+                            TransactionRowView(transaction: tx, account: BankAccount.matching(paymentMethod: tx.paymentMethod, in: accounts))
                         }
                         .buttonStyle(.plain)
                         Button("Clear transaction", role: .destructive) {
@@ -201,7 +203,7 @@ struct PayoffPlanEditorView: View {
                     HStack {
                         Text("Remaining months")
                         Spacer()
-                        TextField("required", text: $termText)
+                        TextField("12", text: $termText)
                             .keyboardType(.numberPad)
                             .multilineTextAlignment(.trailing)
                             .frame(maxWidth: 100)
@@ -210,7 +212,7 @@ struct PayoffPlanEditorView: View {
                         HStack {
                             Text("APR %")
                             Spacer()
-                            TextField("from email", text: $aprText)
+                            TextField("Optional", text: $aprText)
                                 .keyboardType(.decimalPad)
                                 .multilineTextAlignment(.trailing)
                                 .frame(maxWidth: 100)
@@ -301,7 +303,7 @@ struct PayoffPlanEditorView: View {
                         }
                     }
                     Button("Mark paid off") {
-                        markPaidOff()
+                        confirmPaidOff = true
                     }
                 } footer: {
                     if kind.followsCardStatement {
@@ -310,7 +312,7 @@ struct PayoffPlanEditorView: View {
                 }
                 Section {
                     Button("Delete plan", role: .destructive) {
-                        deletePlan()
+                        confirmDelete = true
                     }
                 }
             }
@@ -336,6 +338,16 @@ struct PayoffPlanEditorView: View {
             }
         }
         .onAppear { loadDraft() }
+        .confirmationDialog("Delete this plan?", isPresented: $confirmDelete, titleVisibility: .visible) {
+            Button("Delete plan", role: .destructive) { deletePlan() }
+        } message: {
+            Text("Its payments stop counting on Recurring and the card. Charges already synced aren't affected.")
+        }
+        .confirmationDialog("Mark this plan paid off?", isPresented: $confirmPaidOff, titleVisibility: .visible) {
+            Button("Mark paid off") { markPaidOff() }
+        } message: {
+            Text("Remaining goes to $0 and the plan moves to Ended.")
+        }
         .onChange(of: kind) { _, newKind in
             if newKind == .promoAPR, aprText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                 aprText = "0"
@@ -364,7 +376,7 @@ struct PayoffPlanEditorView: View {
                                 applyLinkedTransaction(tx)
                                 showTransactionPicker = false
                             } label: {
-                                TransactionRowView(transaction: tx)
+                                TransactionRowView(transaction: tx, account: BankAccount.matching(paymentMethod: tx.paymentMethod, in: accounts))
                             }
                             .buttonStyle(.plain)
                         }
@@ -385,11 +397,11 @@ struct PayoffPlanEditorView: View {
     private var amountsFooter: some View {
         switch kind {
         case .payOverTime:
-            Text("Monthly payment is what hits the statement. Fee is the rest after remaining ÷ months (principal). Fee is not principal.")
+            Text("Monthly payment is what shows on the statement. Whatever is left after principal is the plan fee.")
         case .promoAPR:
             Text("Set remaining to the promo balance (not the whole card). Monthly payment should clear it before the promo ends.")
         case .myLoan:
-            Text("From the loan email: amount, fixed APR, billing cycles, and monthly payment. Interest this statement is remaining × APR ÷ 12. Principal is the rest of the payment. The minimum due includes this payment.")
+            Text("Use the numbers from the loan offer: amount, APR, months and monthly payment. The payment is part of the card minimum.")
         case .custom:
             EmptyView()
         }
@@ -625,7 +637,7 @@ struct PayoffPlanEditorView: View {
         do {
             try modelContext.save()
             onSaved?()
-            if existing == nil { dismiss() }
+            dismiss()
         } catch {
             saveError = error.localizedDescription
         }

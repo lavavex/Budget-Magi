@@ -40,6 +40,7 @@ struct SettingsView: View {
     @State private var pendingRestoreURL: URL?
     @State private var appleCardConnected = WalletSync.isConnected
     @State private var appleCardError: String?
+    @State private var isConnectingAppleCard = false
     @State private var pendingRestorePayload: PlaidConnectionBackup.Payload?
     @State private var showRestorePlanSheet = false
     @State private var restorePolicy: PlaidConnectionBackup.RestorePolicy = .safeMerge
@@ -133,7 +134,7 @@ struct SettingsView: View {
                     if linkedItems.isEmpty {
                         Text("No banks linked yet.")
                             .foregroundStyle(.secondary)
-                        Button("Try with Sample Data") { sampleData.start() }
+                        Button("Try with sample data") { sampleData.start() }
                     } else {
                         ForEach(linkedItems) { item in
                             HStack(spacing: 12) {
@@ -150,6 +151,11 @@ struct SettingsView: View {
                                         Text(item.errorMessage ?? "Login expired — Relink required")
                                             .font(.caption.weight(.semibold))
                                             .foregroundStyle(.orange)
+                                        Button("Relink") { startRelink(item) }
+                                            .font(.caption.weight(.semibold))
+                                            .buttonStyle(.bordered)
+                                            .controlSize(.small)
+                                            .disabled(!PlaidCredentialsStore.isConfigured)
                                     } else if !accountNames(for: item).isEmpty {
                                         Text(accountNames(for: item).joined(separator: ", "))
                                             .font(.caption)
@@ -205,6 +211,15 @@ struct SettingsView: View {
                     Text("Linked banks")
                 }
 
+                // Results of linking, saving keys and backups, kept near those controls.
+                if let statusMessage {
+                    Section {
+                        Text(statusMessage)
+                            .font(.caption)
+                            .foregroundStyle(statusIsError ? .red : .secondary)
+                    }
+                }
+
                 // MARK: Apple Card
                 if WalletSync.isAvailable, !sampleData.isActive {
                     Section {
@@ -219,17 +234,30 @@ struct SettingsView: View {
                         } else {
                             Button {
                                 Task {
+                                    isConnectingAppleCard = true
+                                    defer { isConnectingAppleCard = false }
+                                    appleCardError = nil
                                     do {
                                         try await WalletSync.connect()
                                         appleCardConnected = true
-                                        try await WalletSync.sync(modelContext: modelContext)
+                                        let report = try await WalletSync.sync(modelContext: modelContext)
+                                        statusIsError = false
+                                        statusMessage = (["Apple Card connected."] + report.lines).joined(separator: " ")
                                     } catch {
                                         appleCardError = error.localizedDescription
                                     }
                                 }
                             } label: {
-                                Label("Connect Apple Card", systemImage: "creditcard")
+                                if isConnectingAppleCard {
+                                    HStack {
+                                        ProgressView()
+                                        Text("Reading Apple Card…")
+                                    }
+                                } else {
+                                    Label("Connect Apple Card", systemImage: "creditcard")
+                                }
                             }
+                            .disabled(isConnectingAppleCard)
                         }
                         if let appleCardError {
                             Text(appleCardError)
@@ -241,24 +269,6 @@ struct SettingsView: View {
                     } footer: {
                         Text("Reads your Apple Card balance and transactions from Wallet on this iPhone. Nothing is sent anywhere, and it updates each time you Sync.")
                     }
-                }
-
-                // MARK: Sync info
-                Section {
-                    LabeledContent("Credentials") {
-                        Text(PlaidCredentialsStore.isConfigured ? "Configured" : "Missing")
-                            .foregroundStyle(PlaidCredentialsStore.isConfigured ? .green : .orange)
-                    }
-                    LabeledContent("Environment") {
-                        Text(PlaidCredentialsStore.environment.displayName)
-                            .foregroundStyle(.secondary)
-                    }
-                    LabeledContent("Linked banks") {
-                        Text("\(linkedItems.count)")
-                            .foregroundStyle(.secondary)
-                    }
-                } header: {
-                    Text("Status")
                 }
 
                 // MARK: Full backup
@@ -288,19 +298,11 @@ struct SettingsView: View {
                 }
 
                 Section {
-                    Button("Erase All Data", role: .destructive) { showEraseAllData = true }
+                    Button("Erase all data", role: .destructive) { showEraseAllData = true }
                 } footer: {
                     Text("Deletes everything on this device, including your banks and keys.")
                 }
 
-                }
-
-                if let statusMessage {
-                    Section {
-                        Text(statusMessage)
-                            .font(.caption)
-                            .foregroundStyle(statusIsError ? .red : .secondary)
-                    }
                 }
 
                 // MARK: About
@@ -332,8 +334,12 @@ struct SettingsView: View {
                     }
                     .disabled(isExportingDebug)
                     }
-                } header: {
-                    Text("About")
+                    Link(destination: URL(string: "https://budgetmagi.pages.dev/support.html")!) {
+                        Label("Help & support", systemImage: "questionmark.circle")
+                    }
+                    Link(destination: URL(string: "https://budgetmagi.pages.dev/privacy.html")!) {
+                        Label("Privacy policy", systemImage: "hand.raised")
+                    }
                 }
                 
                 Section {
@@ -630,10 +636,10 @@ struct SettingsView: View {
             parts.append("added \(names)")
         }
         if summary.itemsPreserved > 0 {
-            parts.append("kept \(summary.itemsPreserved) existing token(s)")
+            parts.append(summary.itemsPreserved == 1 ? "kept 1 bank already on this iPhone" : "kept \(summary.itemsPreserved) banks already on this iPhone")
         }
         if summary.itemsTokenReplaced > 0 {
-            parts.append("replaced \(summary.itemsTokenReplaced) token(s)")
+            parts.append(summary.itemsTokenReplaced == 1 ? "reconnected 1 bank" : "reconnected \(summary.itemsTokenReplaced) banks")
         }
         if summary.credentialsWritten {
             parts.append("API keys written")
@@ -641,16 +647,16 @@ struct SettingsView: View {
             parts.append("API keys left unchanged")
         }
         if summary.transactionsUpserted > 0 {
-            parts.append("\(summary.transactionsUpserted) transactions")
+            parts.append(summary.transactionsUpserted == 1 ? "1 transaction" : "\(summary.transactionsUpserted) transactions")
         }
         if summary.incomeUpserted > 0 {
-            parts.append("\(summary.incomeUpserted) income")
+            parts.append(summary.incomeUpserted == 1 ? "1 deposit" : "\(summary.incomeUpserted) deposits")
         }
         if summary.bankAccountsUpserted > 0 {
-            parts.append("\(summary.bankAccountsUpserted) accounts")
+            parts.append(summary.bankAccountsUpserted == 1 ? "1 account" : "\(summary.bankAccountsUpserted) accounts")
         }
         if summary.payoffPlansUpserted > 0 {
-            parts.append("\(summary.payoffPlansUpserted) payoff plans")
+            parts.append(summary.payoffPlansUpserted == 1 ? "1 payoff plan" : "\(summary.payoffPlansUpserted) payoff plans")
         }
         let detail = parts.isEmpty ? "nothing new to apply" : parts.joined(separator: " · ")
         let policyLabel: String = {
@@ -660,7 +666,7 @@ struct SettingsView: View {
             case .wipeThenRestore: return "wipe then restore"
             }
         }()
-        return "Restore complete (\(policyLabel)): \(detail). \(summary.environment). Tap Sync if needed."
+        return "Restored with \(policyLabel): \(detail). Sync brings your banks up to date."
     }
 
     /// Reloads credentials and linked banks from stores into local @State for the form.
@@ -1073,11 +1079,6 @@ struct AboutBuildView: View {
                 }
                 LabeledContent("Build") {
                     Text(AppBuildInfo.buildNumber)
-                        .font(.body.monospaced())
-                        .textSelection(.enabled)
-                }
-                LabeledContent("Version (build)") {
-                    Text(AppBuildInfo.versionBuildLabel)
                         .font(.body.monospaced())
                         .textSelection(.enabled)
                 }

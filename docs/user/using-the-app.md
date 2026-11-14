@@ -25,10 +25,12 @@ Your charges and income for the selected period.
 | Control | What it does |
 |---------|----------------|
 | **Sync** | Sync now, Full re-sync, Link bank account |
-| Search | Title, category, amount, last four, nickname |
+| Search | Title, category, amount, last four, nickname. The field stays at the top of the list. |
 | Calendar | This week / This month / All time |
 | Sort | Date, amount, name |
 | Eye | Hide cards from the **list only** |
+
+The arrows at the top of the totals step back or forward a week or month at a time.
 
 After **Sync**, a short line says whether your banks are up to date, with the full counts under **Details**; dismiss it with the **×**.
 
@@ -39,6 +41,8 @@ Tap a row for **Transaction** detail. You can change the **category** and how it
 **Recurring** on that screen: **Auto-detect**, **Yearly**, **Monthly**, **Weekly**, or **Not recurring**. Use **Monthly** or **Yearly** for bills whose amount changes, like phone and electric — the Recurring tab groups that merchant even when the dollar amount is different each time.
 
 **Credit Card Payment** (shown as “Bill pay”) is a payment to a card, not a purchase. It stays in the list but is **not** in Total Spend, charts, or widgets. It also shows under Accounts → Total paid. Checking ACH and the card’s “Thank You” are the **same** payment — Total paid counts it once even if the bank posts them a day or two apart. Some banks post a card payment as just **PAYMENT** or **ACH PMT**. When one of your linked cards received that exact amount within a few days, Sync files the bank line as the card payment. To undo one, open it and set the category yourself.
+
+A charge still **Pending** after ten days shows **may have dropped**: the bank usually posts or releases a hold within a few days, so it likely won't post.
 
 **Loan** / **Installment** also stay in the list but are **not** Total Spend or Total Income. **Refund** rows aren’t income, and they reduce **Total Spend** in the month they post. Budget categories and charts show what you spent before refunds. Card statement credits (travel credit, merchant returns) and My Loan deposits to checking are not paychecks. Issuer **installment** billing (My Chase Plan, Amex Plan It) is the billing of a purchase already in the list — use **Pay over time…** if you want them on Recurring.
 
@@ -56,9 +60,9 @@ Cards your bank names only "CREDIT CARD" show as the bank and last four (Chase �
 | **Min payments / next due** | When the bank reports them. **Interest saving balance** (on the card) is other balances in full plus this statement’s loan/installment payment — pay that to stay on the loan schedule without paying the loan off early. |
 | **Upcoming bills** | Due in the next 30 days (or overdue). A due date more than a week old that the bank has not flagged overdue is treated as stale and dropped, so a bank that stops refreshing does not pin an old bill here forever. |
 
-Open a card to see **all** activity by **statement period** (not the Accounts week/month filter). The card row on Accounts and the card screen always show the same cycle: **This statement** while one is open, **Last statement** when nothing has posted since the close.
+Open a card to see **all** activity by **statement period** (not the Accounts week/month filter). The card row on Accounts and the card screen always show the same cycle: **This statement** while one is open, **Last statement** when nothing has posted since the close. A due date that has passed without the bank flagging the card overdue shows **Due date passed** until the next Sync.
 
-Pull down to Sync.
+Pull down to Sync; it refreshes Apple Card too, the same as **Sync** on Transactions.
 
 ### Loans, installments, and pay-off-by-date
 
@@ -69,13 +73,13 @@ On a **credit card**:
 | **Loans & installments** | Open the **loan charge** or **installment** row. Enter remaining, remaining months, and the **statement payment**. **My Loan** also uses the **fixed APR** from the loan email (interest this statement = remaining × APR ÷ 12). **Pay Over Time** fee is payment minus remaining ÷ months. That payment is **already in the card minimum**. Chase: do not pay “Statement balance” or you pay the whole loan off at once; “Interest saving balance” includes the monthly loan payment. |
 | **Pay off by date** | A plan to clear a promo (0% APR) or extra balance by a date you choose. Accounts → card → **Pay off by date**. Extra principal you intend to send with the statement payment. |
 
-**Record this month’s payment** reduces remaining in the app. These show on **Recurring** on the card’s due date.
+**Record this month’s payment** reduces remaining in the app. **Mark paid off** and **Delete plan** each ask first. These show on **Recurring** on the card’s due date.
 
 Open a card from Accounts to see **all** activity grouped by **statement** (close day from the bank). The Accounts week/month filter does not apply on that screen.
 
 ## Ask
 
-**Ask** is the field above the tab bar (beside it on wider screens). Tap it, type a question, and send, and the chat opens with the answer. When you already have a chat, the button at the end of the field opens it without asking anything new. Ask is on-device chat (Apple Intelligence). The app works out the numbers itself: spending by merchant, category, or month, plus your budget, card due dates, balances, recurring charges, and individual charges. If an answer has an amount that doesn’t match your data, Ask tries again, then warns you. Card names match the nicknames you set in Accounts (not the bank’s “Credit Card” label). Replies stream in; you can tap a suggested follow-up. With a keyboard attached, Return sends.
+**Ask** is the field above the tab bar (beside it on wider screens). Tap it, type a question, and send, and the chat opens with the answer. **Done** closes the chat; an empty chat offers a few questions to start with. When you already have a chat, the button at the end of the field opens it without asking anything new. Ask is on-device chat (Apple Intelligence). The app works out the numbers itself: spending by merchant, category, or month, plus your budget, card due dates, balances, recurring charges, and individual charges. If an answer has an amount that doesn’t match your data, Ask tries again, then warns you. Card names match the nicknames you set in Accounts (not the bank’s “Credit Card” label). Replies stream in; you can tap a suggested follow-up. With a keyboard attached, Return sends.
 
 Ask can also **make a budget** and **plan a card payoff**. Ask "help me make a budget", "what can I afford", "where can I cut back", or name an employer to budget on that paycheck alone. The budget sets your usual income against bills and card minimums, keeps needs like housing and groceries at their usual amount, and trims the rest to fit. Ask "how do I pay off my cards" or "which card should I pay first" for the payoff order: highest interest rate first, with what each card costs a month in interest, the minimums coming due, and any due date that has passed. The app works these plans out itself and writes them into the chat, so the same question always gets the same plan. A one-time deposit isn't counted as monthly income, and a bill that has skipped its usual date is listed apart instead of counted.
 
@@ -85,7 +89,7 @@ Ask can set up the **Budget** tab. After it builds a budget, tap **Use this budg
 
 **Why?** Open Total Spend for **Why this total?**, tap a category for why it changed, or open a charge for **Why this charge?** The app works out what changed itself, so these still work without Apple Intelligence, which only adds a short summary on top.
 
-**Monthly recap** (under Tools) shows a month's income, spending, category changes, price changes, new merchants, largest charges, and anything over budget.
+**Monthly recap** (under Tools) shows a month's income, spending, category changes, price changes, new merchants, largest charges, and anything over budget. Tap one of the largest charges to open it. A month with nothing in it just says so.
 
 **Search with AI** appears when you type a sentence into search, like "Amazon over $50 in August". You get the real matching rows, with the filters it used shown on top.
 
@@ -97,13 +101,15 @@ Transaction detail: **Suggest with Apple Intelligence** picks a category from th
 
 ## Recurring
 
-Detected subscriptions and repeating bills. Fixed-price subs need the same merchant and amount on a schedule. Phone, electric, and similar bills can **vary** — mark one charge **Monthly** or **Yearly** on Transaction detail, or the app may pick them up when the cadence is regular. A **month grid** at the top marks **next charge** days; tap a day to list those charges under the calendar. **Active** vs **Ended** (including ones you mark **Cancelled** or **Not Recurring**). Shows next charge and estimated monthly total (`~` when the amount changes). Tap a row for the charges.
+Detected subscriptions and repeating bills. Fixed-price subs need the same merchant and amount on a schedule. Phone, electric, and similar bills can **vary** — mark one charge **Monthly** or **Yearly** on Transaction detail, or the app may pick them up when the cadence is regular. A **month grid** at the top marks the days bills are due, a year ahead; tap a day to list those charges under the calendar, and tap it again to clear it. **Active** vs **Ended**. Shows next charge and estimated monthly total (`~` when the amount changes).
+
+Tap a bill for its amount, schedule, and charges. **It's cancelled** moves it to **Ended**; **Not a recurring bill** takes it off this tab. Both ask first and apply to every charge from that merchant. An ended bill you marked cancelled has **Mark active again**.
 
 Bills that missed their usual date are listed under **Hasn't charged lately** and aren't counted in Extra bills; if one has ended, open it and mark it cancelled. **Extra bills** is subscriptions and other charges besides the card payment. **On your cards** is loans and installments that are already in the card minimum — they do not add to Extra bills. Pay-off-extra plans are extra principal you mean to send with the statement.
 
 ## Budget
 
-A **monthly cap**, **expected income**, and **per-category limits** compared to real spend. The monthly cap saves when you leave the field. With no categories yet, **Build a budget with Ask** asks Ask to make one. Remaining / over updates as new charges sync. **Cards due** lists statement minimums in this period (loans/installments are already inside the min) plus any extra principal from a pay-off-by-date plan. Income received is compared with the paychecks expected so far, so a payday later in the month isn't counted as missing. A card whose due date has gone by without the bank marking it overdue shows "Was due … · Sync to update", since the new date arrives with the next Sync.
+A **monthly cap**, **expected income**, and **per-category limits** compared to real spend. The monthly cap saves when you leave the field. With no categories yet, **Build a budget with Ask** asks Ask to make one. Remaining / over updates as new charges sync. **Add category limit** starts on a category without a limit, and warns before replacing one that has a limit. **Cards due** lists statement minimums in this period (loans/installments are already inside the min) plus any extra principal from a pay-off-by-date plan. Income received is compared with the paychecks expected so far, so a payday later in the month isn't counted as missing. A card whose due date has gone by without the bank marking it overdue shows "Was due … · Sync to update", since the new date arrives with the next Sync.
 
 ## Settings
 

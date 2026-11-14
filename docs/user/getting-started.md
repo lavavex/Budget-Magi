@@ -81,7 +81,7 @@ After at least one Sync:
 
 ## Just looking?
 
-Tap **Try with Sample Data** on the Welcome screen, or in **Settings → Linked banks**, to explore with made-up numbers and no Plaid keys. **Exit Sample Data** returns you to your real data, and so does closing the app.
+Tap **Try with sample data** on the Welcome screen, or in **Settings → Linked banks**, to explore with made-up numbers and no Plaid keys. **Exit sample data** returns you to your real data, and so does closing the app.
 
 ## 7. Privacy and backup
 

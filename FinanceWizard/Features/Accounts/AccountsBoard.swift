@@ -298,12 +298,12 @@ struct UpcomingBillRow: View {
                         .foregroundStyle(urgencyColor)
                 }
                 if installmentIncluded > 0.005 {
-                    Text("Incl. \(installmentIncluded.formatted(.currency(code: "USD"))) installment")
+                    Text("Includes \(installmentIncluded.formatted(.currency(code: "USD"))) in installments")
                         .font(.caption2)
                         .foregroundStyle(.secondary)
                 }
                 if let isb = interestSavingBalance, isb > 0.005 {
-                    MoneyText(isb, prefix: "Int. saving ")
+                    MoneyText(isb, prefix: "Interest-saving ")
                         .font(.caption2)
                         .foregroundStyle(.tertiary)
                 }
@@ -442,7 +442,7 @@ struct UnifiedCardLabel: View {
                             .lineLimit(1)
                     } else {
                         Text(row.transactionCount > 0
-                             ? "\(row.transactionCount) purchases"
+                             ? (row.transactionCount == 1 ? "1 purchase" : "\(row.transactionCount) purchases")
                              : "No purchases this period")
                             .font(.caption)
                             .foregroundStyle(.secondary)
@@ -496,12 +496,12 @@ struct UnifiedCardLabel: View {
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
                             if row.installmentIncludedInMin > 0.005 {
-                                Text("includes \(row.installmentIncludedInMin.formatted(.currency(code: "USD"))) loan/installment")
+                                Text("Includes \(row.installmentIncludedInMin.formatted(.currency(code: "USD"))) in installments")
                                     .font(.caption2)
                                     .foregroundStyle(.tertiary)
                             }
                             if let isb = row.interestSavingBalance, isb > 0.005 {
-                                MoneyText(isb, prefix: "Int. saving ")
+                                MoneyText(isb, prefix: "Interest-saving ")
                                     .font(.caption2)
                                     .foregroundStyle(.tertiary)
                             }
@@ -517,6 +517,10 @@ struct UnifiedCardLabel: View {
                             Text("Overdue")
                                 .font(.caption.weight(.semibold))
                                 .foregroundStyle(.red)
+                        } else if credit.dueDateIsStale {
+                            Text("Due date passed")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
                         } else {
                             Text("Due \(due.formatted(date: .abbreviated, time: .omitted))")
                                 .font(.caption)

@@ -19,15 +19,17 @@ struct SubscriptionsView: View {
     @State private var isScanning = true
     @State private var isSpinning = false
     @State private var workFinished = false
-    @State private var workLog: [String] = []
     @State private var workStartedAt: Date?
     @State private var path = NavigationPath()
     @State private var selectedDay: DateComponents? = nil
+    /// A bill and the override waiting on the confirmation dialog.
+    @State private var pendingOverride: (item: SubscriptionCandidate, value: String)?
+    @State private var workTitle = ""
 
     @Environment(\.modelContext) private var modelContext
 
     private var monthlySummaryLabel: String {
-        if isScanning { return "Scanning..." }
+        if isScanning { return "Scanning…" }
         return current.count == 1 ? "1 bill" : "\(current.count) bills"
     }
 
@@ -70,11 +72,12 @@ struct SubscriptionsView: View {
         payoffPlans.filter(\.isActive).sorted { $0.installmentTotal > $1.installmentTotal }
     }
     
+    /// Every upcoming charge for the next year, so paging the calendar ahead still shows bills.
     private var chargeDays: Set<DateComponents> {
         var days: Set<DateComponents> = []
-        for tx in current {
-            if let next = nextChargeDate(for: tx) {
-                days.insert(Calendar.current.dateComponents([.year, .month, .day], from: next))
+        for item in current {
+            for date in upcomingChargeDates(for: item) {
+                days.insert(Calendar.current.dateComponents([.year, .month, .day], from: date))
             }
         }
         for plan in activePayoffPlans {
@@ -95,24 +98,15 @@ struct SubscriptionsView: View {
                 && parts.day == selectedDay?.day
         }
     }
+    /// Same bills as the calendar's dots, so a marked day never opens empty.
     private var chargesOnSelectedDay: [SubscriptionCandidate] {
-        var matches: [SubscriptionCandidate] = []
-        if selectedDay == nil {
-            return matches
-        }
-        else {
-            for item in candidates {
-                if let next = nextChargeDate( for: item ) {
-                    let parts = Calendar.current.dateComponents([.year, .month, .day], from: next)
-                    if parts.year == selectedDay?.year
-                        && parts.month == selectedDay?.month
-                        && parts.day == selectedDay?.day {
-                        matches.append(item)
-                    }
-                }
+        guard let selectedDay else { return [] }
+        return current.filter { item in
+            upcomingChargeDates(for: item).contains { date in
+                let parts = Calendar.current.dateComponents([.year, .month, .day], from: date)
+                return parts.year == selectedDay.year && parts.month == selectedDay.month && parts.day == selectedDay.day
             }
         }
-        return matches
     }
     var body: some View {
         NavigationStack(path: $path) {
@@ -214,7 +208,7 @@ struct SubscriptionsView: View {
 
                 Section {
                     if isScanning && candidates.isEmpty {
-                        ProgressView("Scanning...")
+                        ProgressView("Scanning…")
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 12)
                             .listRowBackground(Color.clear)
@@ -294,32 +288,37 @@ struct SubscriptionsView: View {
         // Skip the expensive charge scan while the overlay is up so each
         // SwiftData write does not rebuild Times Seen + the charge list.
         let matches = isSpinning ? [] : matchingTransactions(for: item)
+        let wasCancelled = matches.contains { $0.subscriptionCadenceOverride == "cancelled" }
         return List {
-            LabeledContent("Cadence", value: item.cadence.displayName)
-            if item.amountVaries {
-                LabeledContent("Amount", value: "Varies")
-            }
-            if !isSpinning {
-                LabeledContent("Times Seen", value: "\(matches.count)")
-            }
-            LabeledContent("Why", value: item.confidenceNote)
-            LabeledContent("Last Charged", value: item.lastDate.formatted(date: .abbreviated, time: .omitted))
-            if let next = nextChargeDate(for: item), next > Date() {
-                LabeledContent("Next Charge", value: next.formatted(date: .abbreviated, time: .omitted))
+            Section {
+                LabeledContent("Repeats", value: item.cadence.displayName)
+                LabeledContent("Amount") {
+                    MoneyText(item.typicalAmount, prefix: item.amountVaries ? "About " : "")
+                }
+                if !isSpinning {
+                    LabeledContent("Charges found", value: "\(matches.count)")
+                }
+                LabeledContent("Last charged", value: item.lastDate.formatted(date: .abbreviated, time: .omitted))
+                if let next = nextChargeDate(for: item), next > Date() {
+                    LabeledContent("Next charge", value: next.formatted(date: .abbreviated, time: .omitted))
+                }
+            } footer: {
+                Text(item.confidenceNote)
             }
             Section {
-                Button("Not Recurring", role: .destructive) {
-                    Task { await markNotRecurring(item) }
-                }
-                .disabled(isSpinning)
-            }
-            if showCancelledButton {
-                Section {
-                    Button("Cancelled", role: .destructive) {
-                        Task { await markEnded(item) }
+                if wasCancelled {
+                    Button("Mark active again") {
+                        Task { await applyOverride(nil, on: item) }
                     }
                     .disabled(isSpinning)
+                } else if showCancelledButton {
+                    Button("It's cancelled") { pendingOverride = (item, "cancelled") }
+                        .disabled(isSpinning)
                 }
+                Button("Not a recurring bill", role: .destructive) { pendingOverride = (item, "none") }
+                    .disabled(isSpinning)
+            } footer: {
+                Text("Cancelled keeps it under Ended. Not a recurring bill hides it from this tab. Either one applies to every charge from \(item.displayVendor).")
             }
             if !isSpinning {
                 Section("Charges") {
@@ -327,13 +326,34 @@ struct SubscriptionsView: View {
                         NavigationLink {
                             TransactionDetailView(transaction: tx)
                         } label: {
-                            TransactionRowView(transaction: tx)
+                            TransactionRowView(
+                                transaction: tx,
+                                account: BankAccount.matching(paymentMethod: tx.paymentMethod, in: accounts)
+                            )
                         }
                     }
                 }
             }
         }
         .navigationTitle(item.displayVendor)
+        .confirmationDialog(
+            pendingOverride?.value == "cancelled"
+                ? "Mark \(item.displayVendor) as cancelled?"
+                : "Stop treating \(item.displayVendor) as a recurring bill?",
+            isPresented: Binding(
+                get: { pendingOverride != nil },
+                set: { if !$0 { pendingOverride = nil } }
+            ),
+            titleVisibility: .visible
+        ) {
+            if let pending = pendingOverride {
+                Button(pending.value == "cancelled" ? "Mark cancelled" : "Not recurring", role: .destructive) {
+                    pendingOverride = nil
+                    Task { await applyOverride(pending.value, on: pending.item) }
+                }
+            }
+            Button("Cancel", role: .cancel) { pendingOverride = nil }
+        }
     }
 
     @ViewBuilder
@@ -383,46 +403,16 @@ struct SubscriptionsView: View {
                     Spacer()
                     BundleGIFView(resource: "WorkingOverlay")
                         .frame(width: 240, height: 164)
-                    if workFinished {
-                        Text("Done!")
-                            .font(.headline.weight(.semibold))
-                            .foregroundStyle(.white)
-                    } else {
-                        TimelineView(.periodic(from: .now, by: 0.4)) { context in
-                            let dots = (Int(context.date.timeIntervalSinceReferenceDate / 0.4) % 3) + 1
-                            Text("Working...")
-                                .font(.headline.weight(.semibold))
-                                .hidden()
-                                .overlay {
-                                    Text("Working" + String(repeating: ".", count: dots))
-                                        .font(.headline.weight(.semibold))
-                                        .foregroundStyle(.white)
-                                }
-                        }
-                    }
+                    Text(workFinished ? "Done" : workTitle)
+                        .font(.headline.weight(.semibold))
+                        .foregroundStyle(.white)
+                        .multilineTextAlignment(.center)
                     Spacer()
-                    workLogPanel
                 }
                 .padding(.horizontal, 16)
-                .padding(.bottom, 8)
             }
             .allowsHitTesting(true)
         }
-    }
-
-    private var workLogPanel: some View {
-        VStack(alignment: .leading, spacing: 3) {
-            ForEach(Array(workLog.suffix(8).enumerated()), id: \.offset) { _, line in
-                Text(line)
-                    .font(.system(.caption2, design: .monospaced))
-                    .foregroundStyle(.white.opacity(0.92))
-                    .frame(maxWidth: .infinity, alignment: .leading)
-            }
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(10)
-        .background(.black.opacity(0.4))
-        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
     }
 
     private func cardDueDate(for plan: PayoffPlan) -> Date? {
@@ -481,72 +471,72 @@ struct SubscriptionsView: View {
     }
 
     private func nextChargeDate(for item: SubscriptionCandidate) -> Date? {
+        chargeDate(for: item, step: 1)
+    }
+
+    private func chargeDate(for item: SubscriptionCandidate, step: Int) -> Date? {
         let cal = Calendar.current
         switch item.cadence {
         case .weekly:
-            return cal.date(byAdding: .day,  value: 7, to: item.lastDate)
+            return cal.date(byAdding: .day, value: 7 * step, to: item.lastDate)
         case .monthly:
-            return cal.date(byAdding: .month, value: 1, to: item.lastDate)
+            return cal.date(byAdding: .month, value: step, to: item.lastDate)
         case .yearly:
-            return cal.date(byAdding: .year, value: 1, to: item.lastDate)
+            return cal.date(byAdding: .year, value: step, to: item.lastDate)
         }
     }
 
-    /// Recurring radar: `"none"` hides the vendor; `"cancelled"` keeps it under Ended.
-    @MainActor
-    private func markNotRecurring(_ item: SubscriptionCandidate) async {
-        await applyOverride("none", on: item)
+    /// Projected charges from today through a year out.
+    private func upcomingChargeDates(for item: SubscriptionCandidate) -> [Date] {
+        let today = Calendar.current.startOfDay(for: Date())
+        guard let horizon = Calendar.current.date(byAdding: .year, value: 1, to: today) else { return [] }
+        var dates: [Date] = []
+        var step = 1
+        while let date = chargeDate(for: item, step: step), date <= horizon, step <= 60 {
+            if date >= today { dates.append(date) }
+            step += 1
+        }
+        return dates
     }
 
+    /// Recurring radar: `"none"` hides the vendor, `"cancelled"` keeps it under Ended, and nil
+    /// clears either so detection decides again.
     @MainActor
-    private func markEnded(_ item: SubscriptionCandidate) async {
-        await applyOverride("cancelled", on: item)
-    }
-
-    @MainActor
-    private func applyOverride(_ value: String, on item: SubscriptionCandidate) async {
-        workLog = []
+    private func applyOverride(_ value: String?, on item: SubscriptionCandidate) async {
         workStartedAt = Date()
         workFinished = false
+        workTitle = switch value {
+        case "cancelled": "Marking \(item.displayVendor) cancelled…"
+        case "none": "Removing \(item.displayVendor) from Recurring…"
+        default: "Marking \(item.displayVendor) active…"
+        }
         isSpinning = true
         defer {
             isSpinning = false
             workFinished = false
         }
-        await logWork("Cancelled “\(item.displayVendor)”")
-        await logWork("Finding matching charges")
         let matches = matchingTransactions(for: item)
-        await logWork("Found \(matches.count) charge(s)")
-        await logWork("Writing “\(value)” on each")
+        await logWork("Writing \(value ?? "nil") on \(matches.count) charge(s)")
         for tx in matches {
             tx.subscriptionCadenceOverride = value
         }
-        await logWork("Saving")
         try? modelContext.save()
-        await logWork("Saved")
-        await logWork("Rescanning")
         let groups = await detectGroups()
-        await logWork("Done")
         workFinished = true
-        try? await Task.sleep(for: .seconds(2.5))
+        try? await Task.sleep(for: .seconds(1))
         path = NavigationPath()
         candidates = groups.active
         ended = groups.ended
         isScanning = false
     }
 
+    /// Timing for the Xcode console only; the overlay just says what's happening.
     @MainActor
     private func logWork(_ message: String) async {
-        guard isSpinning else { return }
-        let elapsed: String
-        if let start = workStartedAt {
-            elapsed = String(format: "+%5.2fs", Date().timeIntervalSince(start))
-        } else {
-            elapsed = "+ 0.00s"
-        }
-        let line = "\(elapsed)  \(message)"
-        workLog.append(line)
-        print("[Recurring] \(line)")
+        #if DEBUG
+        guard isSpinning, let start = workStartedAt else { return }
+        print("[Recurring] \(String(format: "+%5.2fs", Date().timeIntervalSince(start)))  \(message)")
+        #endif
     }
 }
 

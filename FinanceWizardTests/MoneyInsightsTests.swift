@@ -38,7 +38,36 @@ final class MoneyInsightsTests: XCTestCase {
         XCTAssertTrue(insight.headline.contains("$200.00"), insight.headline)
         XCTAssertTrue(insight.headline.contains("$100.00 more than September 2026"), insight.headline)
         let categories = try? XCTUnwrap(insight.sections.first { $0.title == "Biggest category changes" })
-        XCTAssertEqual(categories?.lines.first, "Dining up $60.00, $100.00 to $160.00")
+        XCTAssertEqual(categories?.lines.first, "Dining: $160.00, up $60.00 from $100.00")
+    }
+
+    func testChangesNameCategoriesThatAppearedOrStopped() {
+        let insight = MoneyInsights.spending([
+            row("Corner Cafe", 100, month: 9),
+            row("Example Fuel", 40, month: 10, category: "Gas"),
+        ], month: date(10))
+
+        let lines = insight.sections.first { $0.title == "Biggest category changes" }?.lines ?? []
+        XCTAssertTrue(lines.contains("Dining: nothing, down from $100.00"), "\(lines)")
+        XCTAssertTrue(lines.contains("Gas: $40.00, new this month"), "\(lines)")
+    }
+
+    func testRecapOfAnEmptyMonthSaysSoInsteadOfSummarizing() {
+        let insight = MoneyInsights.monthlyRecap([row("Corner Cafe", 30, month: 9)], income: [], month: date(10))
+
+        XCTAssertFalse(insight.hasActivity)
+        XCTAssertEqual(insight.headline, "No activity in October 2026.")
+        XCTAssertTrue(insight.sections.isEmpty)
+    }
+
+    func testLargestChargesLinkToTheirRows() {
+        let big = row("Example Store", 300, month: 10)
+        let small = row("Corner Cafe", 30, month: 10)
+        let insight = MoneyInsights.monthlyRecap([small, big], income: [], month: date(10))
+
+        let largest = try? XCTUnwrap(insight.sections.first { $0.title == "Largest charges" })
+        XCTAssertEqual(largest?.transactionIds, [big.transactionId, small.transactionId])
+        XCTAssertEqual(largest?.lines.count, largest?.transactionIds.count)
     }
 
     func testSpendingCanFocusOnOneCategory() {

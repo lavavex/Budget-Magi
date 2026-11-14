@@ -101,7 +101,7 @@ Statement periods clamp to the length of each month, so February closes on the 2
 
 ### Phone or electric bill doesn’t show on Recurring
 
-Auto-detect looks for the **same amount** on a schedule, so a bill that changes each month may be missing. Open one of those charges → **Recurring** → **Monthly** (or **Yearly**) → **Save**. The Recurring tab groups that merchant even when the amount varies. **Not recurring** on a single charge hides only that row; **Not Recurring** on the Recurring tab hides the whole vendor.
+Auto-detect looks for the **same amount** on a schedule, so a bill that changes each month may be missing. Open one of those charges → **Recurring** → **Monthly** (or **Yearly**) → **Save**. The Recurring tab groups that merchant even when the amount varies. **Not recurring** on a single charge hides only that row; **Not a recurring bill** on the Recurring tab hides the whole vendor.
 
 ## Total Income looks too high
 

@@ -44,7 +44,7 @@ struct OnboardingView: View {
                             Text("All your charges")
                                 .font(.headline)
                                 .foregroundStyle(.primary)
-                            Text("Link your banks. Search, filter by month, and recategorize anything that’s wrong.")
+                            Text("Link banks with your own Plaid keys, or connect Apple Card. Search, filter by month, and fix any category.")
                                 .font(.subheadline)
                                 .foregroundStyle(.secondary)
                                 .fixedSize(horizontal: false, vertical: true)
@@ -71,10 +71,10 @@ struct OnboardingView: View {
                             .foregroundStyle(.tint)
                             .frame(width: 40)
                         VStack(alignment: .leading, spacing: 4) {
-                            Text("Monthly budget")
+                            Text("Budget and bills")
                                 .font(.headline)
                                 .foregroundStyle(.primary)
-                            Text("Set an overall cap and category limits. Remaining updates as real charges come in.")
+                            Text("Category limits, recurring bills, and Ask, which answers questions about your money on this iPhone.")
                                 .font(.subheadline)
                                 .foregroundStyle(.secondary)
                                 .fixedSize(horizontal: false, vertical: true)
@@ -102,7 +102,7 @@ struct OnboardingView: View {
                 .foregroundStyle(Color(.systemBackground))
                 .padding(.horizontal, 40)
 
-                Button("Try with Sample Data") { sampleData.start() }
+                Button("Try with sample data") { sampleData.start() }
                     .font(.subheadline.weight(.medium))
                     .padding(.top, 12)
                     .padding(.bottom, 8)

@@ -58,6 +58,9 @@ struct CardsView: View {
             List {
                 // MARK: Overview
                 Section {
+                    if period != .all {
+                        PeriodStepper(period: period, referenceDate: $referenceDate)
+                    }
                     NavigationLink {
                         CategorySpendView(period: period, referenceDate: referenceDate)
                     } label: {
@@ -302,33 +305,18 @@ struct CardsView: View {
         }
     }
 
-    /// Pull latest accounts/transactions from Plaid and show a short banner.
+    /// The same Sync as Transactions (Apple Card, then banks), with its headline as a short banner.
     private func syncFromPlaid() async {
         guard !isSyncing else { return }
-        await MainActor.run {
-            isSyncing = true
-            syncBanner = "Syncing with Plaid…"
-        }
-        do {
-            let report = try await PlaidSyncEngine.syncAll(
-                modelContext: modelContext,
-                resetCursors: false,
-                includePending: true,
-                forceRefresh: false
-            )
-            await MainActor.run {
-                syncBanner = report.summary
-                isSyncing = false
-                nicknameEpoch += 1 // force board rebuild via refreshToken
-            }
-            try? await Task.sleep(nanoseconds: 2_500_000_000)
-            await MainActor.run { syncBanner = nil }
-        } catch {
-            await MainActor.run {
-                syncBanner = error.localizedDescription
-                isSyncing = false
-            }
-        }
+        isSyncing = true
+        syncBanner = "Syncing…"
+        let outcome = await AppSync.run(modelContext: modelContext)
+        syncBanner = outcome.headline
+        isSyncing = false
+        guard outcome.succeeded else { return }
+        nicknameEpoch += 1 // force board rebuild via refreshToken
+        try? await Task.sleep(for: .seconds(2.5))
+        syncBanner = nil
     }
 
     @ViewBuilder

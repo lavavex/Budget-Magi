@@ -213,7 +213,9 @@ struct CardDetailView: View {
                     MoneyText(cardSpend)
                         .foregroundStyle(.secondary)
                 }
-                Text("\(summaryPeriodLabel) · \(currentStatementRows.count == 1 ? "1 transaction" : "\(currentStatementRows.count) transactions")")
+                // Charges only, to match the spend-only total above.
+                let charges = TransactionAnalytics.spendOnly(currentStatementRows).count
+                Text("\(summaryPeriodLabel) · \(charges == 1 ? "1 charge" : "\(charges) charges")")
                     .font(.caption)
                     .foregroundStyle(.secondary)
 
@@ -425,7 +427,8 @@ struct CardDetailView: View {
                                     transaction: transaction,
                                     institutionId: account?.institutionId,
                                     institutionName: account?.institutionName,
-                                    showPaymentRail: bankAccount?.isDepository == true || creditAccount == nil
+                                    showPaymentRail: bankAccount?.isDepository == true || creditAccount == nil,
+                                    account: account
                                 )
                             }
                         }
