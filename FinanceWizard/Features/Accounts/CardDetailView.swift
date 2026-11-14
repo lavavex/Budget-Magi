@@ -261,7 +261,7 @@ struct CardDetailView: View {
                     MoneyText(cardSpend)
                         .foregroundStyle(.secondary)
                 }
-                Text("\(summaryPeriodLabel) · \(currentStatementRows.count) transactions")
+                Text("\(summaryPeriodLabel) · \(currentStatementRows.count == 1 ? "1 transaction" : "\(currentStatementRows.count) transactions")")
                     .font(.caption)
                     .foregroundStyle(.secondary)
 
@@ -305,7 +305,7 @@ struct CardDetailView: View {
                                 if let days = credit.daysUntilDue {
                                     Text(dueSubtitle(days: days, overdue: credit.isOverdue == true))
                                         .font(.caption)
-                                        .foregroundStyle(days < 0 || credit.isOverdue == true ? .red : .secondary)
+                                        .foregroundStyle(credit.isOverdue == true ? .red : .secondary)
                                 }
                             }
                         }
@@ -506,7 +506,8 @@ struct CardDetailView: View {
 
     /// Relative due copy: past due, today, tomorrow, or “In N days.”
     private func dueSubtitle(days: Int, overdue: Bool) -> String {
-        if overdue || days < 0 {
+        if !overdue, days < 0 { return "Date passed · Sync to update" }
+        if overdue {
             let past = abs(min(days, 0))
             if past == 0 { return "Due today" }
             return past == 1 ? "1 day past due" : "\(past) days past due"

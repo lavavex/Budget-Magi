@@ -23,10 +23,15 @@ private enum AppTab: String, Hashable {
 /// Root of the main UI: a TabView with lazy-loaded secondary tabs for faster launch.
 struct ContentView: View {
     @AppStorage(ScreenshotPrivacy.storageKey) private var screenshotPrivacy = false
+    @Environment(\.horizontalSizeClass) private var sizeClass
     @State private var selectedTab: AppTab = Self.launchTab
     /// Only build heavy tabs after the user opens them (first switch is still work; launch is not).
     @State private var loadedTabs: Set<AppTab> = [.transactions, Self.launchTab]
-    @State private var showAsk = false
+    /// Set when the Ask field sends a question or reopens the chat, which opens the Ask sheet.
+    @State private var askRequest: AskRequest?
+    @State private var hasAskChat = false
+    /// The question bar above the keyboard, open while a question is being typed.
+    @State private var isAsking = false
     @State private var showStoreRecovered = AppStoreRecovery.needsNotice
 
     /// Transactions, unless a Debug build was launched with `-screen <tab>`.
@@ -82,23 +87,49 @@ struct ContentView: View {
             .tag(AppTab.settings)
         }
         .environment(\.screenshotPrivacy, screenshotPrivacy)
+        // With a side tab bar (iPhone Duo, iPad, Mac) the Ask field floats over the bottom of each
+        // list, so lists get room to scroll their last rows clear of it. A bottom tab bar
+        // already reserves that space.
+        .contentMargins(.bottom, sizeClass == .regular ? 72 : 0, for: .scrollContent)
         // Opening a .fwbackup from Files jumps to Settings (where restore UI lives).
         .onReceive(NotificationCenter.default.publisher(for: PlaidConnectionBackup.openFileNotification)) { _ in
             loadedTabs.insert(.settings)
             selectedTab = .settings
         }
         // The system places this above the bottom tab bar, or in a small bubble beside a side tab bar.
+        // The chat opens only once there's a question, so a tap doesn't cover the screen.
         .tabViewBottomAccessory {
-            AskAccessoryButton { showAsk = true }
+            AskField(hasChat: hasAskChat) {
+                isAsking = true
+            } openChat: {
+                askRequest = AskRequest(question: nil)
+            }
         }
-        .sheet(isPresented: $showAsk) {
-            OnDeviceAIChatView()
+        // Typing happens in a bar of its own, because the accessory stays put behind the keyboard.
+        .overlay(alignment: .bottom) {
+            if isAsking {
+                AskComposer(isPresented: $isAsking) { question in
+                    askRequest = AskRequest(question: question)
+                }
+                .transition(.move(edge: .bottom).combined(with: .opacity))
+            }
         }
+        .animation(.snappy, value: isAsking)
+        .onChange(of: selectedTab) { isAsking = false }
+        .sheet(item: $askRequest, onDismiss: refreshAskChat) { request in
+            OnDeviceAIChatView(initialQuestion: request.question)
+        }
+        .task { refreshAskChat() }
         .alert("Your data couldn’t be opened", isPresented: $showStoreRecovered) {
             Button("OK", role: .cancel) { AppStoreRecovery.needsNotice = false }
         } message: {
             Text("A copy was kept on this iPhone and the app started empty. Sync downloads your bank history again. To get budgets, payoff plans, and edits back, restore a backup in Settings.")
         }
+    }
+
+    private func refreshAskChat() {
+        let turns = (try? ModelContext(AskStore.container).fetchCount(FetchDescriptor<AskTurn>())) ?? 0
+        hasAskChat = turns > 0
     }
 
     @ViewBuilder
@@ -293,7 +324,7 @@ struct AllTransactionsView: View {
                             .font(.title3.weight(.semibold))
                             .foregroundStyle(periodNet >= 0 ? .green : .primary)
                     }
-                    Text("\(TransactionAnalytics.spendOnly(periodTransactions).count) expenses · \(periodIncome.count) income in \(periodLabel.lowercased())")
+                    Text("\(TransactionAnalytics.spendOnly(periodTransactions).count) expenses · \(periodIncome.count) income in \(period.sentenceLabel(referenceDate: referenceDate))")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
@@ -485,7 +516,7 @@ struct AllTransactionsView: View {
             return "No expenses yet. Link a bank in Settings, then tap Sync."
         }
         if periodTransactions.isEmpty {
-            return "No expenses in \(periodLabel.lowercased())."
+            return "No expenses in \(period.sentenceLabel(referenceDate: referenceDate))."
         }
         return "No expenses match your search."
     }
@@ -494,7 +525,7 @@ struct AllTransactionsView: View {
         if incomeRows.isEmpty {
             return "No income yet. Tap Sync after linking a bank."
         }
-        return "No income in \(periodLabel.lowercased())."
+        return "No income in \(period.sentenceLabel(referenceDate: referenceDate))."
     }
 
     // MARK: - Sync
@@ -621,25 +652,108 @@ struct AllTransactionsView: View {
 
 }
 
-private struct AskAccessoryButton: View {
-    let action: () -> Void
+/// What the Ask sheet opens with: a question to send, or nil to show the chat as it is.
+private struct AskRequest: Identifiable {
+    let id = UUID()
+    let question: String?
+}
+
+/// Ask in the tab bar: reads like a search field and opens the question bar when tapped.
+private struct AskField: View {
+    let hasChat: Bool
+    let startAsking: () -> Void
+    let openChat: () -> Void
+
+    @State private var hintIndex = 0
+
+    static let hints = ["Ask about your money"] + OnDeviceAIChatView.promptHints
 
     var body: some View {
-        Button(action: action) {
-            HStack(spacing: 8) {
-                Image(systemName: "apple.intelligence")
-                    .foregroundStyle(
-                        LinearGradient(
-                            colors: [.orange, .pink, .purple, .cyan],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
-                    )
-                Text("Ask")
+        HStack(spacing: 8) {
+            Button(action: startAsking) {
+                HStack(spacing: 8) {
+                    AskGlyph()
+                    Text(Self.hints[hintIndex])
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                    Spacer(minLength: 0)
+                }
+                .contentShape(Rectangle())
             }
-            // Beside a side tab bar, the system's bubble is only as wide as this and has no padding
-            // of its own, so a label sized to its text overflows.
-            .frame(minWidth: 120)
+            .buttonStyle(.plain)
+            .accessibilityLabel("Ask about your money")
+            if hasChat {
+                Button("Open chat", systemImage: "bubble.left.and.text.bubble.right", action: openChat)
+                    .labelStyle(.iconOnly)
+            }
         }
+        .padding(.horizontal, 14)
+        // Beside a side tab bar, the system's bubble is only as wide as this and has no padding
+        // of its own, so a field sized to its text would be too narrow to read.
+        .frame(minWidth: 280)
+        .task { await cycleHints() }
+    }
+
+    private func cycleHints() async {
+        while !Task.isCancelled {
+            try? await Task.sleep(for: .seconds(4))
+            withAnimation(.easeInOut(duration: 0.4)) {
+                hintIndex = (hintIndex + 1) % Self.hints.count
+            }
+        }
+    }
+}
+
+/// The bar a question is typed into. It sits above the keyboard and sends to the chat.
+private struct AskComposer: View {
+    @Binding var isPresented: Bool
+    let ask: (String) -> Void
+
+    @State private var draft = ""
+    @FocusState private var focused: Bool
+
+    var body: some View {
+        HStack(spacing: 10) {
+            AskGlyph()
+            TextField(AskField.hints[0], text: $draft)
+                .focused($focused)
+                .submitLabel(.send)
+                .onSubmit(send)
+            if draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                Button("Cancel", systemImage: "xmark.circle.fill") { isPresented = false }
+                    .labelStyle(.iconOnly)
+                    .foregroundStyle(.secondary)
+            } else {
+                Button("Send", systemImage: "arrow.up.circle.fill", action: send)
+                    .labelStyle(.iconOnly)
+                    .font(.title2)
+            }
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 12)
+        .glassEffect(.regular, in: .capsule)
+        .padding(.horizontal)
+        .padding(.bottom, 8)
+        .onAppear { focused = true }
+    }
+
+    private func send() {
+        let question = draft.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !question.isEmpty else { return }
+        isPresented = false
+        ask(question)
+    }
+}
+
+private struct AskGlyph: View {
+    var body: some View {
+        Image(systemName: "apple.intelligence")
+            .foregroundStyle(
+                LinearGradient(
+                    colors: [.orange, .pink, .purple, .cyan],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+            )
     }
 }

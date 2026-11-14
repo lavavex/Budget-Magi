@@ -34,9 +34,12 @@ struct MoneyInsightView: View {
                 }
             }
 
-            Section {
-                Text(insight.headline)
-                    .font(.body.weight(.medium))
+            // The summary already says what the headline does, so showing both repeats it.
+            if summary == nil {
+                Section {
+                    Text(insight.headline)
+                        .font(.body.weight(.medium))
+                }
             }
 
             ForEach(insight.sections, id: \.title) { section in

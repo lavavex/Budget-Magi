@@ -257,7 +257,7 @@ struct UpcomingBillRow: View {
     // Color escalates as due date nears or utilization is high.
     private var urgencyColor: Color {
         if account.isOverdue == true { return .red }
-        if let days = account.daysUntilDue {
+        if let days = account.daysUntilDue, !account.dueDateIsStale {
             if days <= 3 { return .red }
             if days <= 7 { return .orange }
             if let util = account.utilization, util >= 0.7 { return .orange }
@@ -312,6 +312,10 @@ struct UpcomingBillRow: View {
                         Text("Overdue")
                             .font(.caption2.weight(.semibold))
                             .foregroundStyle(.red)
+                    } else if account.dueDateIsStale {
+                        Text("Due date passed")
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
                     } else if let days = account.daysUntilDue {
                         Text(days == 0 ? "Due today" : "Due in \(days)d")
                             .font(.caption2)
@@ -339,10 +343,16 @@ struct TotalPaidDisclosure: View {
     var institutionId: String?
     var resolveInstitutionId: ((CreditCardPayment) -> String?)? = nil
 
+    /// "This month" reads as "this month" mid-sentence, while "June 2026" keeps its capital.
+    private static func inSentence(_ label: String) -> String {
+        guard label.hasPrefix("This ") || label.hasPrefix("Last ") || label == "All time" else { return label }
+        return label.prefix(1).lowercased() + label.dropFirst()
+    }
+
     var body: some View {
         DisclosureGroup {
             if payments.isEmpty {
-                Text("No card bill payments in \(periodLabel.lowercased()).")
+                Text("No card bill payments in \(Self.inSentence(periodLabel)).")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             } else {

@@ -73,7 +73,7 @@ docs/                          GitHub Pages documentation
 | **Where data stays** | Inference is on-device (Apple Intelligence); still prefer minimal transaction context in prompts |
 | **Capability / entitlement** | None beyond what the system already requires for Apple Intelligence |
 
-`Features/AI/` — availability on Settings. **Ask** tab bar accessory on `ContentView` (sheet, not a sixth tab). `AskLedger` computes every total, tools hand short results to the model, and `AskConversation` manages on-device sessions, the recap of earlier questions, and answer checks. Persisted thread (separate store). `suggestCategory` on transaction detail.
+`Features/AI/` — availability on Settings. **Ask** is a tab bar accessory on `ContentView` (`AskField`), not a sixth tab. Tapping it opens `AskComposer`, an overlay that rides above the keyboard, since the accessory doesn't move for it; sending opens the chat sheet with the question. `AskLedger` computes every total, tools hand short results to the model, and `AskConversation` manages on-device sessions, the recap of earlier questions, and answer checks. Persisted thread (separate store). `suggestCategory` on transaction detail.
 
 ### Cost of the hot paths
 

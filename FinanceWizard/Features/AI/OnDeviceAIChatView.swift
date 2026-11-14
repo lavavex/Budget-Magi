@@ -40,7 +40,8 @@ struct OnDeviceAIChatView: View {
     @State private var proposal: AskEditProposal?
     @State private var unnamedCount = 0
 
-    private let promptHints = [
+    /// Shown in turn as placeholder text, here and in the Ask field.
+    static let promptHints = [
         "What's my biggest category?",
         "How much did I spend this month?",
         "What recurring charges are coming up?",
@@ -143,7 +144,7 @@ struct OnDeviceAIChatView: View {
         HStack {
             ZStack(alignment: .leading) {
                 if draft.isEmpty {
-                    Text(promptHints[promptIndex])
+                    Text(Self.promptHints[promptIndex])
                         .foregroundStyle(.secondary)
                         .lineLimit(1)
                         .allowsHitTesting(false)
@@ -352,7 +353,7 @@ struct OnDeviceAIChatView: View {
             try? await Task.sleep(for: .seconds(3.5))
             guard draft.isEmpty else { continue }
             withAnimation(.easeInOut(duration: 0.5)) {
-                promptIndex = (promptIndex + 1) % promptHints.count
+                promptIndex = (promptIndex + 1) % Self.promptHints.count
             }
         }
     }

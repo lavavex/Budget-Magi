@@ -28,7 +28,7 @@ struct SubscriptionsView: View {
 
     private var monthlySummaryLabel: String {
         if isScanning { return "Scanning..." }
-        return "\(candidates.count) bills"
+        return candidates.count == 1 ? "1 bill" : "\(candidates.count) bills"
     }
 
     private var issuerPlans: [PayoffPlan] {

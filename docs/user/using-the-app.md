@@ -71,7 +71,7 @@ Open a card from Accounts to see **all** activity grouped by **statement** (clos
 
 ## Ask
 
-**Ask** sits above the tab bar (not a sixth tab — that would open iOS **More**). On-device chat (Apple Intelligence). The app works out the numbers itself: spending by merchant, category, or month, plus your budget, card due dates, balances, recurring charges, and individual charges. If an answer has an amount that doesn’t match your data, Ask tries again, then warns you. Card names match the nicknames you set in Accounts (not the bank’s “Credit Card” label). Replies stream in; you can tap a suggested follow-up. With a keyboard attached, Return sends.
+**Ask** is the field above the tab bar (beside it on wider screens). Tap it, type a question, and send, and the chat opens with the answer. When you already have a chat, the button at the end of the field opens it without asking anything new. Ask is on-device chat (Apple Intelligence). The app works out the numbers itself: spending by merchant, category, or month, plus your budget, card due dates, balances, recurring charges, and individual charges. If an answer has an amount that doesn’t match your data, Ask tries again, then warns you. Card names match the nicknames you set in Accounts (not the bank’s “Credit Card” label). Replies stream in; you can tap a suggested follow-up. With a keyboard attached, Return sends.
 
 Ask can also **make a budget** and **plan a card payoff**. Ask "help me make a budget", "what can I afford", "where can I cut back", or name an employer to budget on that paycheck alone. The budget sets your usual income against bills and card minimums, keeps needs like housing and groceries at their usual amount, and trims the rest to fit. Ask "how do I pay off my cards" or "which card should I pay first" for the payoff order: highest interest rate first, with what each card costs a month in interest, the minimums coming due, and any due date that has passed. The app works these plans out itself and writes them into the chat, so the same question always gets the same plan. A one-time deposit isn't counted as monthly income, and a bill that has skipped its usual date is listed apart instead of counted.
 
@@ -99,7 +99,7 @@ Detected subscriptions and repeating bills. Fixed-price subs need the same merch
 
 ## Budget
 
-A **monthly cap**, **expected income**, and **per-category limits** compared to real spend. Remaining / over updates as new charges sync. **Cards due** lists statement minimums in this period (loans/installments are already inside the min) plus any extra principal from a pay-off-by-date plan.
+A **monthly cap**, **expected income**, and **per-category limits** compared to real spend. Remaining / over updates as new charges sync. **Cards due** lists statement minimums in this period (loans/installments are already inside the min) plus any extra principal from a pay-off-by-date plan. Income received is compared with the paychecks expected so far, so a payday later in the month isn't counted as missing. A card whose due date has gone by without the bank marking it overdue shows "Was due … · Sync to update", since the new date arrives with the next Sync.
 
 ## Settings
 

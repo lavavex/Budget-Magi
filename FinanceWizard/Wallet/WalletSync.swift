@@ -39,7 +39,12 @@ enum WalletSync {
     /// on a Mac is ruled out by hand: FinanceKit reports data there, then stops the app with a
     /// failed assertion as soon as it's asked for permission.
     static var isAvailable: Bool {
-        !ProcessInfo.processInfo.isiOSAppOnMac && FinanceStore.isDataAvailable(.financialData)
+        #if targetEnvironment(simulator)
+        // The simulator reports data too, and has no Wallet behind it.
+        return false
+        #else
+        return !ProcessInfo.processInfo.isiOSAppOnMac && FinanceStore.isDataAvailable(.financialData)
+        #endif
     }
 
     /// Whether the user turned Apple Card on in the app. Wallet's own permission is checked each sync.

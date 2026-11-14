@@ -56,7 +56,7 @@ struct CategorySpendView: View {
                     MoneyText(snapshot.totalSpend)
                         .font(.title2.bold())
                 }
-                Text("\(snapshot.transactionCount) transactions · \(snapshot.categories.count) categories")
+                Text("\(snapshot.transactionCount == 1 ? "1 transaction" : "\(snapshot.transactionCount) transactions") · \(snapshot.categories.count == 1 ? "1 category" : "\(snapshot.categories.count) categories")")
                     .font(.caption)
                     .foregroundStyle(.secondary)
                 if snapshot.refunds > 0.005 {
@@ -151,7 +151,7 @@ struct CategorySpendView: View {
                 .frame(width: 24)
             VStack(alignment: .leading, spacing: 2) {
                 Text(item.category)
-                Text("\(item.transactionCount) transactions")
+                Text(item.transactionCount == 1 ? "1 transaction" : "\(item.transactionCount) transactions")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }

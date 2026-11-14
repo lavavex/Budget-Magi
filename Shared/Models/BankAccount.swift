@@ -165,6 +165,12 @@ final class BankAccount {
             || isOverdue == true
     }
 
+    /// The stored due date has gone by but the bank hasn't said the card is overdue, which
+    /// usually means the payment was made and the next due date arrives with the next Sync.
+    var dueDateIsStale: Bool {
+        isOverdue != true && (daysUntilDue ?? 0) < 0
+    }
+
     /// Days until next payment due (negative if past due).
     var daysUntilDue: Int? {
         guard let due = nextPaymentDueDate else { return nil }

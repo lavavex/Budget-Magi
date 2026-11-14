@@ -128,9 +128,11 @@ struct ExpectedIncomeStream: Identifiable, Codable, Hashable, Sendable {
 
     /// Expected dollars landing inside a period window (for vs actual).
     /// Walks pay dates with a safety cap so a bug cannot infinite-loop.
+    /// - Parameter before: Counts only paydays before this day, for what should have arrived by now.
     func expectedAmount(
         in period: SnapshotPeriod,
         referenceDate: Date,
+        before: Date? = nil,
         calendar: Calendar = .current
     ) -> Double {
         let range = TransactionAnalytics.dateInterval(
@@ -142,7 +144,7 @@ struct ExpectedIncomeStream: Identifiable, Codable, Hashable, Sendable {
             return estimatedMonthly
         }
         let start = calendar.startOfDay(for: range.start)
-        let endExclusive = range.end
+        let endExclusive = before.map { min(range.end, calendar.startOfDay(for: $0)) } ?? range.end
         var total = 0.0
         var cursor = start
         var safety = 0

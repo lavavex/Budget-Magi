@@ -225,10 +225,10 @@ struct BudgetView: View {
                                         .foregroundStyle(.secondary)
                                 }
                             }
-                            if let delta = snapshot.incomeVsExpected, snapshot.expectedIncome > 0.005 {
+                            if let delta = snapshot.incomeVsExpected, snapshot.expectedSoFar > 0.005 || snapshot.income > 0.005 {
                                 HStack {
                                     // Small epsilon (-0.005) avoids floating-point “almost zero” flicker.
-                                    Text(delta >= -0.005 ? "Ahead of plan" : "Behind plan")
+                                    Text(delta >= -0.005 ? "Income ahead of expected so far" : "Income behind expected so far")
                                         .font(.caption2)
                                         .foregroundStyle(.tertiary)
                                     Spacer()
@@ -275,14 +275,20 @@ struct BudgetView: View {
                             HStack {
                                 CardText(account.displayName)
                                 Spacer()
-                                if let min = account.minimumPaymentAmount {
+                                if let min = account.minimumPaymentAmount, min > 0.005 {
                                     MoneyText(min)
                                         .font(.body.weight(.semibold))
+                                } else {
+                                    Text(account.minimumPaymentAmount == nil ? "No minimum shown" : "No payment due")
+                                        .font(.subheadline)
+                                        .foregroundStyle(.secondary)
                                 }
                             }
                             HStack {
                                 if let due = account.nextPaymentDueDate {
-                                    Text("Due \(due.formatted(date: .abbreviated, time: .omitted))")
+                                    Text(account.dueDateIsStale
+                                        ? "Was due \(due.formatted(date: .abbreviated, time: .omitted)) · Sync to update"
+                                        : "Due \(due.formatted(date: .abbreviated, time: .omitted))")
                                         .font(.caption)
                                         .foregroundStyle(.secondary)
                                 }
