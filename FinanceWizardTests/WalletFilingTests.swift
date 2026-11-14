@@ -46,6 +46,11 @@ final class WalletFilingTests: XCTestCase {
         XCTAssertEqual(WalletFiling.kind(type: "interest", isCharge: true, title: "INTEREST CHARGE"), .interest)
         XCTAssertEqual(WalletFiling.kind(type: "unknown", isCharge: true, title: "MONTHLY INSTALLMENTS (3 OF 12)"), .installment)
         XCTAssertEqual(WalletFiling.kind(type: "unknown", isCharge: false, title: "DAILY CASH ADJUSTMENT"), .refund)
+        // As Wallet really reports them: an untyped charge under the store's name, with no merchant code.
+        XCTAssertEqual(WalletFiling.kind(type: "unknown", isCharge: true, title: "Apple Store", hasMerchantCode: false), .installment)
+        XCTAssertEqual(WalletFiling.kind(type: "pointOfSale", isCharge: true, title: "Apple Store", hasMerchantCode: true), .purchase)
+        XCTAssertEqual(WalletFiling.kind(type: "billPayment", isCharge: false, title: "Bill Payment", hasMerchantCode: false), .payment)
+        XCTAssertEqual(WalletFiling.kind(type: "adjustment", isCharge: true, title: "Adjustment", hasMerchantCode: false), .fee)
     }
 
     func testRowsAreSignedAndFiledByKind() {

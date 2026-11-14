@@ -39,14 +39,20 @@ struct WalletFiledRow: Equatable {
 enum WalletFiling {
     /// What kind of line this is. FinanceKit's type alone isn't enough: a payment can arrive
     /// as a transfer or a deposit, and installments have no type of their own.
-    /// - Parameter isCharge: True when the line adds to what's owed.
-    static func kind(type: String, isCharge: Bool, title: String) -> WalletTransaction.Kind {
+    /// - Parameters:
+    ///   - isCharge: True when the line adds to what's owed.
+    ///   - hasMerchantCode: Whether the card network tagged the line with a merchant category.
+    static func kind(type: String, isCharge: Bool, title: String, hasMerchantCode: Bool = true) -> WalletTransaction.Kind {
         let lower = title.lowercased()
         if PayoffPlanRecognition.looksLikeInstallmentBillingTitle(title) || lower.contains("monthly installments") {
             return .installment
         }
+        // Wallet reports each month's Apple Card installment as an untyped charge under the
+        // store's name, with no merchant code, since nothing was bought that day.
+        if type == "unknown", isCharge, !hasMerchantCode { return .installment }
         if type == "interest" || lower.contains("interest charge") { return .interest }
-        if type == "fee" { return .fee }
+        // A charge-side adjustment takes back rewards and the like.
+        if type == "fee" || (type == "adjustment" && isCharge) { return .fee }
         guard !isCharge else { return .purchase }
         let paymentTypes = ["billPayment", "transfer", "deposit", "directDeposit", "standingOrder", "directDebit"]
         if paymentTypes.contains(type) || lower.contains("payment") || lower.contains("ach deposit")

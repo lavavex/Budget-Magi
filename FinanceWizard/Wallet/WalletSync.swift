@@ -92,7 +92,12 @@ enum WalletSync {
         let existingAccounts = (try? modelContext.fetch(FetchDescriptor<BankAccount>())) ?? []
         for card in cards {
             let id = accountId(card.id)
-            let balance = balances.first { $0.accountID == card.id }.flatMap { $0.booked ?? $0.available }
+            // Wallet returns every balance it has recorded, oldest first, so take the newest.
+            // "Booked" is everything owed, including what's left on monthly installments.
+            // Wallet's own Card Balance leaves installments out, and FinanceKit doesn't say
+            // how much of the total they are.
+            let balance = balances.filter { $0.accountID == card.id }.compactMap { $0.booked ?? $0.available }
+                .max { $0.asOfDate < $1.asOfDate }
             let owed = balance.map { amount($0.amount) * ($0.creditDebitIndicator == chargeMark ? 1 : -1) }
             let credit = card.creditInformation
             let account = existingAccounts.first { $0.accountId == id } ?? {
@@ -127,7 +132,8 @@ enum WalletSync {
                 kind: WalletFiling.kind(
                     type: String(describing: line.transactionType),
                     isCharge: line.creditDebitIndicator == chargeMark,
-                    title: line.originalTransactionDescription.isEmpty ? title : line.originalTransactionDescription
+                    title: line.originalTransactionDescription.isEmpty ? title : line.originalTransactionDescription,
+                    hasMerchantCode: line.merchantCategoryCode != nil
                 ),
                 date: line.transactionDate,
                 isPending: line.status != .booked,
@@ -144,7 +150,8 @@ enum WalletSync {
     }
 
     private static func amount(_ value: CurrencyAmount) -> Double {
-        abs(NSDecimalNumber(decimal: value.amount).doubleValue)
+        // To the cent, since a Decimal turned into a Double can pick up stray digits.
+        (abs(NSDecimalNumber(decimal: value.amount).doubleValue) * 100).rounded() / 100
     }
 
     /// Adds new lines and refreshes ones seen before. A category the user set stays.

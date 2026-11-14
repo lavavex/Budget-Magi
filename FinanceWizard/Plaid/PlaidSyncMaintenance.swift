@@ -150,9 +150,13 @@ extension PlaidSyncEngine {
         for bank in payments.filter({ !isOnCard($0) && $0.plaidAccountId != nil }).sorted(by: byDate) {
             _ = claim(for: bank)
         }
+        // A category the user set stays for a round amount, where two unrelated payments can
+        // coincide. An amount that matches to the cent is the same payment, and a category
+        // given to every "PAYMENT" line at once shouldn't keep it counted as spending.
+        let isRound = { (row: Transaction) in cents(row) % 100 == 0 }
         return rows
             .filter {
-                $0.plaidAccountId != nil && !isOnCard($0) && !$0.isCategoryLocked
+                $0.plaidAccountId != nil && !isOnCard($0) && (!$0.isCategoryLocked || !isRound($0))
                     && !TransactionAnalytics.isExcludedFromSpendCategory($0.category)
                     && MoneyInsights.looksLikeVaguePayment($0.title)
             }

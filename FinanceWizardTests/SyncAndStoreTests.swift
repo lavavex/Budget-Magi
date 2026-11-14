@@ -208,6 +208,19 @@ final class SyncAndStoreTests: XCTestCase {
         XCTAssertEqual(paired(rows), [])
     }
 
+    func testAnExactOddAmountOutranksACategoryTheUserSet() {
+        let payment = KnownCategory.creditCardPayment.rawValue
+        let rows = bankAndCardRows([
+            ("Bill Payment", 934.71, 6, "card", payment),
+            ("PAYMENT", 934.71, 9, "checking", "Home Internet"),
+            ("Bill Payment", 200, 6, "card", payment),
+            ("PAYMENT", 200, 9, "checking", "Home Internet"),
+        ])
+        rows[1].categoryLocked = true
+        rows[3].categoryLocked = true
+        XCTAssertEqual(paired(rows), ["row-1"])
+    }
+
     func testPairingRefilesTheBankRowWithoutASecondPaymentRecord() throws {
         context.insert(BankAccount(
             accountId: "card", itemId: "item", name: "Example Card", mask: "1111", type: "credit",

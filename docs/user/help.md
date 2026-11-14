@@ -123,6 +123,8 @@ Plaid can't link Apple Card, so Budget Magi reads it from Wallet. On your iPhone
 - If you tap Don't Allow, turn it back on in iPhone **Settings → Privacy & Security → Wallet**.
 - A payment to Apple Card from a linked bank is matched to the card's own payment line, so it isn't counted as spending.
 - Monthly installments show as **Installment** and aren't counted again as spending.
+- The balance is everything you owe on the card, including what's left on monthly installments. Wallet's own Card Balance leaves installments out, and Wallet doesn't tell apps how much of the total they are, so the two numbers differ by your remaining installments.
+- A bank line that says only PAYMENT becomes a card payment when it matches an Apple Card payment to the cent, even if you had given that line a category. A round amount like $100.00 keeps your category.
 - Apple Card Family participants aren't supported by Wallet's data sharing.
 
 ## Welcome screen
