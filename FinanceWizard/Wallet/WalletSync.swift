@@ -35,8 +35,12 @@ enum WalletSync {
     nonisolated static let itemId = "apple-wallet"
     private static let connectedKey = "wallet.connected"
 
-    /// False on iPad, Mac, and the simulator, and wherever Wallet has no financial data.
-    static var isAvailable: Bool { FinanceStore.isDataAvailable(.financialData) }
+    /// False in the simulator and wherever Wallet has no financial data. An iPhone app running
+    /// on a Mac is ruled out by hand: FinanceKit reports data there, then stops the app with a
+    /// failed assertion as soon as it's asked for permission.
+    static var isAvailable: Bool {
+        !ProcessInfo.processInfo.isiOSAppOnMac && FinanceStore.isDataAvailable(.financialData)
+    }
 
     /// Whether the user turned Apple Card on in the app. Wallet's own permission is checked each sync.
     static var isConnected: Bool {
