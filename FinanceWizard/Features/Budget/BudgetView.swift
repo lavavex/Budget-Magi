@@ -20,6 +20,8 @@ struct BudgetView: View {
     @State private var period: SnapshotPeriod = .month
     @State private var referenceDate: Date = TransactionAnalytics.monthStart(for: Date())
     @State private var monthlyDraft: String = ""
+    @FocusState private var monthlyFocused: Bool
+    @State private var showBudgetAsk = false
     @State private var editingCategory: String?
     @State private var categoryDraft: String = ""
     @State private var showAddCategory = false
@@ -84,6 +86,15 @@ struct BudgetView: View {
                 }
             }
             .navigationTitle("Budget")
+            .toolbar {
+                ToolbarItemGroup(placement: .keyboard) {
+                    Spacer()
+                    Button("Done") { monthlyFocused = false }
+                }
+            }
+            .sheet(isPresented: $showBudgetAsk) {
+                OnDeviceAIChatView(initialQuestion: "Help me make a budget")
+            }
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     // Limits and expected income are monthly figures; comparing a week or
@@ -369,13 +380,14 @@ struct BudgetView: View {
                         .keyboardType(.decimalPad)
                         .multilineTextAlignment(.trailing)
                         .frame(maxWidth: 120)
+                        .focused($monthlyFocused)
+                        // The number pad has no return key, so leaving the field saves it.
+                        .onChange(of: monthlyFocused) { _, focused in
+                            if !focused { saveMonthlyLimit(plan: plan) }
+                        }
                     Text("USD")
                         .foregroundStyle(.secondary)
                 }
-                Button("Save monthly budget") {
-                    saveMonthlyLimit(plan: plan)
-                }
-                .fontWeight(.semibold)
             } header: {
                 Text("Overall")
             }
@@ -386,6 +398,11 @@ struct BudgetView: View {
                     Text("No spend yet this period. Add category limits to track specific areas.")
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
+                    Button {
+                        showBudgetAsk = true
+                    } label: {
+                        Label("Build a budget with Ask", systemImage: "apple.intelligence")
+                    }
                 } else {
                     ForEach(snapshot.categories) { row in
                         Button {

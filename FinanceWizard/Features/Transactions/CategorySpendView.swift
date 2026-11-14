@@ -60,13 +60,9 @@ struct CategorySpendView: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
                 if snapshot.refunds > 0.005 {
-                    HStack(spacing: 4) {
-                        Text("After refunds of")
-                        MoneyText(snapshot.refunds)
-                        Text("· categories show spending before refunds")
-                    }
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                    Text("Total is after \(snapshot.refunds.formatted(.currency(code: "USD"))) in refunds. Categories show spending before refunds.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
                 }
             }
 
@@ -104,7 +100,8 @@ struct CategorySpendView: View {
                     )
                     .frame(minHeight: chartHeight)
                     .padding(.vertical, 8)
-                    .listRowInsets(EdgeInsets(top: 8, leading: 8, bottom: 8, trailing: 8))
+                    // The bar icons sit at the chart's leading edge, so they need the row's full inset.
+                    .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
                 }
             }
 

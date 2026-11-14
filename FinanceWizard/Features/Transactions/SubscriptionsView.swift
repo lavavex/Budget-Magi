@@ -28,7 +28,7 @@ struct SubscriptionsView: View {
 
     private var monthlySummaryLabel: String {
         if isScanning { return "Scanning..." }
-        return candidates.count == 1 ? "1 bill" : "\(candidates.count) bills"
+        return current.count == 1 ? "1 bill" : "\(current.count) bills"
     }
 
     private var issuerPlans: [PayoffPlan] {
@@ -45,9 +45,19 @@ struct SubscriptionsView: View {
         payoffPlans.filter { !$0.isActive }.sorted { $0.updatedAt > $1.updatedAt }
     }
 
+    /// Bills charging on schedule. One that skipped its date is listed apart and not counted,
+    /// the same way Ask treats it.
+    private var current: [SubscriptionCandidate] {
+        candidates.filter { !SubscriptionAnalytics.isOverdue($0) }
+    }
+
+    private var lapsed: [SubscriptionCandidate] {
+        candidates.filter { SubscriptionAnalytics.isOverdue($0) }
+    }
+
     /// Cash besides the card bill: subscriptions + extra principal plans.
     private var extraMonthly: Double {
-        candidates.reduce(0) { $0 + $1.estimatedMonthly }
+        current.reduce(0) { $0 + $1.estimatedMonthly }
             + extraPayoffPlans.reduce(0) { $0 + $1.monthlyPayment }
     }
 
@@ -62,7 +72,7 @@ struct SubscriptionsView: View {
     
     private var chargeDays: Set<DateComponents> {
         var days: Set<DateComponents> = []
-        for tx in candidates {
+        for tx in current {
             if let next = nextChargeDate(for: tx) {
                 days.insert(Calendar.current.dateComponents([.year, .month, .day], from: next))
             }
@@ -122,7 +132,7 @@ struct SubscriptionsView: View {
                                 Image(systemName: "calendar")
                                     .font(.largeTitle)
                                     .padding(.bottom, 8)
-                                Text("No Recurring Charges on this Day")
+                                Text("No recurring charges on this day")
                                     .multilineTextAlignment(.center)
                             }
                             .foregroundStyle(.secondary)
@@ -208,7 +218,7 @@ struct SubscriptionsView: View {
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 12)
                             .listRowBackground(Color.clear)
-                    } else if candidates.isEmpty {
+                    } else if current.isEmpty {
                         ContentUnavailableView(
                             "No repeating bills yet",
                             systemImage: "repeat.circle",
@@ -216,7 +226,7 @@ struct SubscriptionsView: View {
                         )
                         .listRowBackground(Color.clear)
                     } else {
-                        ForEach(candidates) { item in
+                        ForEach(current) { item in
                             NavigationLink(value: item.id) {
                                 subscriptionRow(item)
                             }
@@ -224,6 +234,20 @@ struct SubscriptionsView: View {
                     }
                 } header: {
                     Text("Bills")
+                }
+
+                if !lapsed.isEmpty {
+                    Section {
+                        ForEach(lapsed) { item in
+                            NavigationLink(value: item.id) {
+                                subscriptionRow(item)
+                            }
+                        }
+                    } header: {
+                        Text("Hasn't charged lately")
+                    } footer: {
+                        Text("These missed their usual date, so they aren't counted in Extra bills. If one has ended, open it and mark it cancelled.")
+                    }
                 }
 
                 if !ended.isEmpty || !endedPayoffPlans.isEmpty {
@@ -245,7 +269,7 @@ struct SubscriptionsView: View {
                     }
                 }
             }
-            .navigationTitle("Recurring Charges")
+            .navigationTitle("Recurring")
             .navigationDestination(for: String.self) { id in
                 if let item = candidates.first(where: { $0.id == id }) {
                     recurringDetail(item, showCancelledButton: true)
@@ -338,9 +362,12 @@ struct SubscriptionsView: View {
             VStack(alignment: .trailing, spacing: 2) {
                 MoneyText(item.typicalAmount, prefix: item.amountVaries ? "~" : "")
                     .font(.body.weight(.semibold))
-                MoneyText(item.estimatedMonthly, prefix: "~", suffix: "/mo")
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
+                // A monthly bill's amount already is its monthly cost.
+                if item.cadence != .monthly {
+                    MoneyText(item.estimatedMonthly, prefix: "~", suffix: "/mo")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                }
             }
         }
         .padding(.vertical, 2)

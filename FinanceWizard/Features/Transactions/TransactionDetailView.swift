@@ -28,6 +28,8 @@ struct TransactionDetailView: View {
     @State private var didSave = false
     @State private var saveStatusMessage: String?
     @State private var isSuggestingCategory = false
+    /// Set when "Custom…" is picked, which shows the field for typing a category of one's own.
+    @State private var isCustomCategory = false
     /// FIX: .onAppear fires again when returning from the payoff editor or the category
     /// suggester, and it re-seeded the drafts from the model — silently discarding whatever
     /// the user had typed. Seed once per pushed view.
@@ -180,31 +182,34 @@ struct TransactionDetailView: View {
                         .multilineTextAlignment(.trailing)
                     }
                 }
-                // Optional fields only appear when Plaid provided them.
-                if let channel = transaction.plaidPaymentChannel, !channel.isEmpty {
-                    LabeledContent("Payment channel") {
-                        Text(channel)
-                            .foregroundStyle(.secondary)
+                // For reporting a problem; closed so it doesn't crowd the row's real details.
+                DisclosureGroup("Technical details") {
+                    // Optional fields only appear when Plaid provided them.
+                    if let channel = transaction.plaidPaymentChannel, !channel.isEmpty {
+                        LabeledContent("Payment channel") {
+                            Text(channel)
+                                .foregroundStyle(.secondary)
+                        }
                     }
-                }
-                LabeledContent("ID") {
-                    Text(transaction.transactionId)
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
-                        .textSelection(.enabled)
-                }
-                if transaction.isCategoryLocked || transaction.isPaymentRailLocked {
-                    LabeledContent("Locked") {
-                        Text(lockSummary)
-                            .font(.caption)
+                    LabeledContent("ID") {
+                        Text(transaction.transactionId)
+                            .font(.caption2)
                             .foregroundStyle(.secondary)
+                            .textSelection(.enabled)
                     }
-                }
-                if let source = transaction.overrideSource, !source.isEmpty {
-                    LabeledContent("Override source") {
-                        Text(source)
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
+                    if transaction.isCategoryLocked || transaction.isPaymentRailLocked {
+                        LabeledContent("Locked") {
+                            Text(lockSummary)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                    if let source = transaction.overrideSource, !source.isEmpty {
+                        LabeledContent("Set by") {
+                            Text(source)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
                     }
                 }
             }
@@ -219,8 +224,10 @@ struct TransactionDetailView: View {
                         .tag(Optional<String>.none)
                 }
 
-                TextField("Category name", text: $categoryText)
-                    .textInputAutocapitalization(.words)
+                if isCustomCategory || selectedPreset == nil {
+                    TextField("Category name", text: $categoryText)
+                        .textInputAutocapitalization(.words)
+                }
 
                 if OnDeviceAI.availabilityStatus() == .available {
                     Button {
@@ -240,7 +247,7 @@ struct TransactionDetailView: View {
             }
 
             Section {
-                Picker("Payment rail", selection: $selectedRail) {
+                Picker("Paid with", selection: $selectedRail) {
                     ForEach(PaymentRail.allCases) { rail in
                         Label(rail.displayName, systemImage: rail.systemImage)
                             .tag(rail)
@@ -331,6 +338,7 @@ struct TransactionDetailView: View {
                     Button("Save") {
                         Task { await saveEdits() }
                     }
+                    .disabled(!hasEdits)
                 }
             }
         }
@@ -364,6 +372,14 @@ struct TransactionDetailView: View {
     }
 
     /// Picker selection is String? so “Custom…” can be nil without clearing the text field.
+    /// Whether anything on the screen differs from what's saved.
+    private var hasEdits: Bool {
+        let category = categoryText.trimmingCharacters(in: .whitespacesAndNewlines)
+        return (!category.isEmpty && category.caseInsensitiveCompare(transaction.category) != .orderedSame)
+            || selectedRail != transaction.effectivePaymentRail
+            || subscriptionMode.storageValue != transaction.subscriptionCadenceOverride
+    }
+
     private var categoryPickerBinding: Binding<String?> {
         Binding(
             get: { selectedPreset },
@@ -371,6 +387,9 @@ struct TransactionDetailView: View {
                 // Only write when a preset name is chosen; nil (Custom) leaves free text alone.
                 if let newValue {
                     categoryText = newValue
+                    isCustomCategory = false
+                } else {
+                    isCustomCategory = true
                 }
             }
         )

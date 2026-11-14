@@ -87,15 +87,25 @@ final class BankAccount {
         return name
     }
 
-    /// User nickname when set, otherwise Plaid label.
+    /// A name for screens when there's no nickname. Banks often call every card "CREDIT CARD",
+    /// which names nothing, so those read as the bank and last four instead. `plaidDisplayName`
+    /// stays as it is, because transactions store it as their payment method.
+    var defaultDisplayName: String {
+        let generic = ["credit card", "card", "creditcard"]
+        guard generic.contains(name.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()),
+              let mask, !mask.isEmpty, !institutionName.isEmpty else { return plaidDisplayName }
+        return "\(institutionName) ···\(mask)"
+    }
+
+    /// User nickname when set, otherwise a readable default.
     var displayName: String {
-        CardLabelStore.label(accountId: accountId, fallback: plaidDisplayName)
+        CardLabelStore.label(accountId: accountId, fallback: defaultDisplayName)
     }
 
     /// Subtitle under the nickname (institution / original Plaid name).
     /// Omits last-four when the display name already ends with it (product pick → "Card 1234").
     var subtitleDetail: String {
-        let customLabel = CardLabelStore.label(accountId: accountId, fallback: plaidDisplayName)
+        let customLabel = CardLabelStore.label(accountId: accountId, fallback: defaultDisplayName)
         var parts: [String] = []
         if !institutionName.isEmpty {
             parts.append(institutionName)
@@ -109,7 +119,7 @@ final class BankAccount {
             }
         }
         // If user renamed (e.g. product + last 4), also show original Plaid account name
-        if customLabel != plaidDisplayName {
+        if customLabel != defaultDisplayName {
             parts.insert(plaidDisplayName, at: 0)
         }
         return parts.joined(separator: " · ")

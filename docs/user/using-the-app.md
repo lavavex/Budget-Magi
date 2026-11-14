@@ -30,9 +30,11 @@ Your charges and income for the selected period.
 | Sort | Date, amount, name |
 | Eye | Hide cards from the **list only** |
 
+After **Sync**, a short line says whether your banks are up to date, with the full counts under **Details**; dismiss it with the **×**.
+
 **Needs review** — items that still need a category or bill-pay check. Swipe to fix.
 
-Tap a row for **Transaction** detail. You can change the **category** and **payment method**. **Save** remembers that so later Syncs don’t overwrite it. Turn on **learn** to apply the same category to future charges from that merchant.
+Tap a row for **Transaction** detail. You can change the **category** and how it was **paid with** (card or bank transfer). Pick **Custom…** to type a category of your own. **Save** turns on once something changed, and keeps it so later Syncs don’t overwrite it. **Technical details** holds the bank's raw fields, for reporting a problem. Turn on **learn** to apply the same category to future charges from that merchant.
 
 **Recurring** on that screen: **Auto-detect**, **Yearly**, **Monthly**, **Weekly**, or **Not recurring**. Use **Monthly** or **Yearly** for bills whose amount changes, like phone and electric — the Recurring tab groups that merchant even when the dollar amount is different each time.
 
@@ -43,6 +45,8 @@ Tap a row for **Transaction** detail. You can change the **category** and **paym
 ## Accounts
 
 Credit cards plus checking and savings.
+
+Cards your bank names only "CREDIT CARD" show as the bank and last four (Chase ···4103) until you give them a name: open the card and set **Display name**.
 
 | You’ll see | Meaning |
 |------------|---------|
@@ -95,11 +99,11 @@ Transaction detail: **Suggest with Apple Intelligence** picks a category from th
 
 Detected subscriptions and repeating bills. Fixed-price subs need the same merchant and amount on a schedule. Phone, electric, and similar bills can **vary** — mark one charge **Monthly** or **Yearly** on Transaction detail, or the app may pick them up when the cadence is regular. A **month grid** at the top marks **next charge** days; tap a day to list those charges under the calendar. **Active** vs **Ended** (including ones you mark **Cancelled** or **Not Recurring**). Shows next charge and estimated monthly total (`~` when the amount changes). Tap a row for the charges.
 
-**Extra bills** is subscriptions and other charges besides the card payment. **On your cards** is loans and installments that are already in the card minimum — they do not add to Extra bills. Pay-off-extra plans are extra principal you mean to send with the statement.
+Bills that missed their usual date are listed under **Hasn't charged lately** and aren't counted in Extra bills; if one has ended, open it and mark it cancelled. **Extra bills** is subscriptions and other charges besides the card payment. **On your cards** is loans and installments that are already in the card minimum — they do not add to Extra bills. Pay-off-extra plans are extra principal you mean to send with the statement.
 
 ## Budget
 
-A **monthly cap**, **expected income**, and **per-category limits** compared to real spend. Remaining / over updates as new charges sync. **Cards due** lists statement minimums in this period (loans/installments are already inside the min) plus any extra principal from a pay-off-by-date plan. Income received is compared with the paychecks expected so far, so a payday later in the month isn't counted as missing. A card whose due date has gone by without the bank marking it overdue shows "Was due … · Sync to update", since the new date arrives with the next Sync.
+A **monthly cap**, **expected income**, and **per-category limits** compared to real spend. The monthly cap saves when you leave the field. With no categories yet, **Build a budget with Ask** asks Ask to make one. Remaining / over updates as new charges sync. **Cards due** lists statement minimums in this period (loans/installments are already inside the min) plus any extra principal from a pay-off-by-date plan. Income received is compared with the paychecks expected so far, so a payday later in the month isn't counted as missing. A card whose due date has gone by without the bank marking it overdue shows "Was due … · Sync to update", since the new date arrives with the next Sync.
 
 ## Settings
 

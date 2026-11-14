@@ -163,54 +163,6 @@ struct CardDetailView: View {
                 .listRowBackground(Color.clear)
             }
 
-            Section {
-                TextField("Display name", text: $nicknameDraft)
-                    .textInputAutocapitalization(.words)
-                // Credit vs bank vs orphan method show different identity fields.
-                if let credit = creditAccount {
-                    LabeledContent("Bank name") {
-                        CardText(credit.plaidDisplayName)
-                            .foregroundStyle(.secondary)
-                            .multilineTextAlignment(.trailing)
-                    }
-                    if let mask = credit.mask, !mask.isEmpty {
-                        LabeledContent("Last four") {
-                            CardText(mask)
-                                .font(.body.monospaced())
-                                .foregroundStyle(.secondary)
-                        }
-                    }
-                } else if let bank = bankAccount {
-                    LabeledContent("Bank name") {
-                        CardText(bank.plaidDisplayName)
-                            .foregroundStyle(.secondary)
-                            .multilineTextAlignment(.trailing)
-                    }
-                    if let mask = bank.mask, !mask.isEmpty {
-                        LabeledContent("Last four") {
-                            CardText(mask)
-                                .font(.body.monospaced())
-                                .foregroundStyle(.secondary)
-                        }
-                    }
-                } else {
-                    LabeledContent("Account") {
-                        CardText(rawPaymentMethod)
-                            .foregroundStyle(.secondary)
-                            .multilineTextAlignment(.trailing)
-                    }
-                }
-                Button("Save name") {
-                    saveNickname()
-                }
-                if didSaveNickname {
-                    Label("Saved", systemImage: "checkmark.circle.fill")
-                        .foregroundStyle(.green)
-                        .font(.caption)
-                }
-            } header: {
-                Text("Account name")
-            }
 
             Section {
                 if let credit = creditAccount {
@@ -275,6 +227,56 @@ struct CardDetailView: View {
                 }
             } header: {
                 Text("Summary")
+            }
+
+            Section {
+                TextField("Display name", text: $nicknameDraft)
+                    .textInputAutocapitalization(.words)
+                // Credit vs bank vs orphan method show different identity fields.
+                if let credit = creditAccount {
+                    LabeledContent("Bank name") {
+                        CardText(credit.plaidDisplayName)
+                            .foregroundStyle(.secondary)
+                            .multilineTextAlignment(.trailing)
+                    }
+                    if let mask = credit.mask, !mask.isEmpty {
+                        LabeledContent("Last four") {
+                            CardText(mask)
+                                .font(.body.monospaced())
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                } else if let bank = bankAccount {
+                    LabeledContent("Bank name") {
+                        CardText(bank.plaidDisplayName)
+                            .foregroundStyle(.secondary)
+                            .multilineTextAlignment(.trailing)
+                    }
+                    if let mask = bank.mask, !mask.isEmpty {
+                        LabeledContent("Last four") {
+                            CardText(mask)
+                                .font(.body.monospaced())
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                } else {
+                    LabeledContent("Account") {
+                        CardText(rawPaymentMethod)
+                            .foregroundStyle(.secondary)
+                            .multilineTextAlignment(.trailing)
+                    }
+                }
+                Button("Save name") {
+                    saveNickname()
+                }
+                .disabled(nicknameDraft.trimmingCharacters(in: .whitespacesAndNewlines) == titleName)
+                if didSaveNickname {
+                    Label("Saved", systemImage: "checkmark.circle.fill")
+                        .foregroundStyle(.green)
+                        .font(.caption)
+                }
+            } header: {
+                Text("Account name")
             }
 
             if let credit = creditAccount, credit.hasLiabilitiesDetails {

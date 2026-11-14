@@ -161,6 +161,8 @@ struct AllTransactionsView: View {
 
     @State private var syncStatusTitle: String = ""
     @State private var syncStatusDetail: String = ""
+    /// The counters behind a finished sync, kept out of sight unless asked for.
+    @State private var syncStatusCounters: String = ""
     @State private var syncStatusKind: SyncStatusKind = .idle
     /// Keeps the status section visible after a run until the next Sync.
     @State private var showSyncStatus = false
@@ -271,8 +273,24 @@ struct AllTransactionsView: View {
                                         .fixedSize(horizontal: false, vertical: true)
                                 }
                             }
+                            Spacer(minLength: 0)
+                            if !isSyncing {
+                                Button("Dismiss", systemImage: "xmark.circle.fill") { showSyncStatus = false }
+                                    .labelStyle(.iconOnly)
+                                    .foregroundStyle(.secondary)
+                                    .buttonStyle(.borderless)
+                            }
                         }
                         .padding(.vertical, 2)
+                        if !isSyncing, !syncStatusCounters.isEmpty {
+                            DisclosureGroup("Details") {
+                                Text(syncStatusCounters)
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                                    .fixedSize(horizontal: false, vertical: true)
+                            }
+                            .font(.caption)
+                        }
                     }
                 }
 
@@ -559,11 +577,12 @@ struct AllTransactionsView: View {
     }
 
     @MainActor
-    private func setSyncStatus(_ kind: SyncStatusKind, title: String, detail: String = "") {
+    private func setSyncStatus(_ kind: SyncStatusKind, title: String, detail: String = "", counters: String = "") {
         showSyncStatus = true
         syncStatusKind = kind
         syncStatusTitle = title
         syncStatusDetail = detail
+        syncStatusCounters = counters
     }
 
     /// Pull transactions directly from the user’s Plaid developer account.
@@ -589,11 +608,14 @@ struct AllTransactionsView: View {
 
         // Apple Card first, so its payments are there for the bank rows to be matched against.
         var walletLines: [String] = []
+        var walletNote = ""
         if WalletSync.isConnected {
             do {
                 walletLines = try await WalletSync.sync(modelContext: modelContext).lines
+                walletNote = " Apple Card is up to date too."
             } catch {
                 walletLines = ["Apple Card: \(error.localizedDescription)"]
+                walletNote = " Apple Card couldn't update: \(error.localizedDescription)"
             }
         }
 
@@ -614,7 +636,8 @@ struct AllTransactionsView: View {
                 setSyncStatus(
                     kind,
                     title: report.warnings.isEmpty ? "Sync complete" : "Sync finished with warnings",
-                    detail: (walletLines + [report.summary]).joined(separator: "\n")
+                    detail: report.headline + walletNote,
+                    counters: (walletLines + [report.summary]).joined(separator: "\n")
                 )
                 isSyncing = false
                 refreshToolStats()
@@ -623,7 +646,7 @@ struct AllTransactionsView: View {
             await MainActor.run {
                 // With only Apple Card connected there are no banks to sync, and that isn't a failure.
                 if !walletLines.isEmpty, PlaidItemStore.linkedItemIDs.isEmpty {
-                    setSyncStatus(.success, title: "Sync complete", detail: walletLines.joined(separator: "\n"))
+                    setSyncStatus(.success, title: "Sync complete", detail: "Apple Card up to date.", counters: walletLines.joined(separator: "\n"))
                     refreshToolStats()
                 } else {
                     setSyncStatus(

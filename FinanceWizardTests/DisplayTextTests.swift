@@ -41,6 +41,22 @@ final class DisplayTextTests: XCTestCase {
         XCTAssertFalse(card.dueDateIsStale)
     }
 
+    func testGenericCardNamesReadAsTheBankAndLastFour() {
+        let generic = BankAccount(
+            accountId: "generic-test", itemId: "item", name: "CREDIT CARD", mask: "4103", type: "credit",
+            institutionName: "Example Bank", currentBalance: 0
+        )
+        XCTAssertEqual(generic.defaultDisplayName, "Example Bank ···4103")
+        // Transactions store this as their payment method, so it must not change.
+        XCTAssertEqual(generic.plaidDisplayName, "CREDIT CARD ···4103")
+
+        let named = BankAccount(
+            accountId: "named-test", itemId: "item", name: "Example Rewards", mask: "1002", type: "credit",
+            institutionName: "Example Bank", currentBalance: 0
+        )
+        XCTAssertEqual(named.defaultDisplayName, "Example Rewards ···1002")
+    }
+
     func testPeriodNamesKeepTheirCapitalMidSentence() {
         XCTAssertEqual(SnapshotPeriod.month.sentenceLabel(referenceDate: date(11, 14), now: date(11, 14), calendar: calendar), "this month")
         XCTAssertEqual(SnapshotPeriod.month.sentenceLabel(referenceDate: date(9, 10), now: date(11, 14), calendar: calendar), "September 2026")

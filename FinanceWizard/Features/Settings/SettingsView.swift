@@ -20,6 +20,7 @@ struct SettingsView: View {
     /// Relink must capture the Item here so the sheet doesn’t fall back to `.new`.
     @State private var linkSheetRequest: LinkSheetRequest?
     @State private var linkedItems: [PlaidLinkedItem] = []
+    @Query private var bankAccounts: [BankAccount]
     @State private var statusMessage: String?
     @State private var statusIsError = false
     @State private var itemPendingDelete: PlaidLinkedItem?
@@ -68,11 +69,15 @@ struct SettingsView: View {
                 if !sampleData.isActive {
                 // MARK: Credentials
                 Section {
-                    TextField("client_id", text: $clientID)
-                        .textInputAutocapitalization(.never)
-                        .autocorrectionDisabled()
-                        .font(.body.monospaced())
+                    LabeledContent("Client ID") {
+                        TextField("client_id", text: $clientID)
+                            .textInputAutocapitalization(.never)
+                            .autocorrectionDisabled()
+                            .font(.body.monospaced())
+                            .multilineTextAlignment(.trailing)
+                    }
                     HStack {
+                        Text("Secret")
                         Group {
                             if showSecret {
                                 TextField("secret", text: $secret)
@@ -83,6 +88,7 @@ struct SettingsView: View {
                         .textInputAutocapitalization(.never)
                         .autocorrectionDisabled()
                         .font(.body.monospaced())
+                        .multilineTextAlignment(.trailing)
 
                         Button {
                             showSecret.toggle()
@@ -98,12 +104,17 @@ struct SettingsView: View {
                         }
                     }
 
-                    TextField("OAuth redirect override", text: $redirectURI)
-                        .textInputAutocapitalization(.never)
-                        .autocorrectionDisabled()
-                        .font(.body.monospaced())
-                        .keyboardType(.URL)
-                        .textContentType(.URL)
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Redirect URL")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                        TextField("OAuth redirect override", text: $redirectURI)
+                            .textInputAutocapitalization(.never)
+                            .autocorrectionDisabled()
+                            .font(.body.monospaced())
+                            .keyboardType(.URL)
+                            .textContentType(.URL)
+                    }
 
                     Button("Save credentials") {
                         saveCredentials()
@@ -139,8 +150,8 @@ struct SettingsView: View {
                                         Text(item.errorMessage ?? "Login expired — Relink required")
                                             .font(.caption.weight(.semibold))
                                             .foregroundStyle(.orange)
-                                    } else if !item.accountNames.isEmpty {
-                                        Text(item.accountNames.joined(separator: ", "))
+                                    } else if !accountNames(for: item).isEmpty {
+                                        Text(accountNames(for: item).joined(separator: ", "))
                                             .font(.caption)
                                             .foregroundStyle(.secondary)
                                     }
@@ -242,7 +253,7 @@ struct SettingsView: View {
                         Text(PlaidCredentialsStore.environment.displayName)
                             .foregroundStyle(.secondary)
                     }
-                    LabeledContent("Linked items") {
+                    LabeledContent("Linked banks") {
                         Text("\(linkedItems.count)")
                             .foregroundStyle(.secondary)
                     }
@@ -669,6 +680,12 @@ struct SettingsView: View {
     }
 
     /// Writes the form fields into PlaidCredentialsStore (device-local storage).
+    /// The bank's accounts by the names used everywhere else, nicknames included.
+    private func accountNames(for item: PlaidLinkedItem) -> [String] {
+        let names = bankAccounts.filter { $0.itemId == item.id }.map(\.displayName).sorted()
+        return names.isEmpty ? item.accountNames : names
+    }
+
     private func saveCredentials() {
         PlaidCredentialsStore.clientID = clientID
         PlaidCredentialsStore.secret = secret
