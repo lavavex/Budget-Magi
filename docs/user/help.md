@@ -29,7 +29,7 @@ Wait a few seconds and try **Link** again, or check Plaid Dashboard logs.
 
 ### Sync says no banks linked
 
-**Settings → Link bank account**, then **Transactions → Sync → Sync now**.
+**Settings → Link bank account**, then **Home → Sync → Sync now**.
 
 ### Sync works but the list is empty
 

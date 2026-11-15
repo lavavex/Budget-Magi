@@ -23,7 +23,8 @@ Use the TestFlight build to try new features and report bugs before a public App
 
 ## What you get
 
-- **Transactions** — every charge and paycheck in one list. Fix categories. Sync when you want.
+- **Home** — this month at a glance, cash and card balances, and what's due next. Sync when you want.
+- **Accounts** — every charge and paycheck in one list, plus each card and bank account. Fix categories.
 - **Accounts** — cards, checking, and savings: balances, utilization, bills coming due.
 - **Budget** — a monthly cap and category limits against real spend.
 - **Upcoming** — card payments coming due, subscriptions and repeating bills, on a calendar.

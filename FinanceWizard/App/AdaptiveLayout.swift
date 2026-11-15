@@ -3,17 +3,17 @@
 //  Finance Wizard
 //
 //  Layout by the app's real width rather than size class. The iPhone Duo's cover screen
-//  (466 pt) and inner screen (669 pt, or 951 pt turned sideways) all report a regular width,
-//  so size class can't tell a phone-sized column from a tablet-sized one.
+//  (466 pt) and inner screen all report a regular width, so size class can't tell a
+//  phone-sized column from a tablet-sized one.
 //
 
 import SwiftUI
 
 enum LayoutWidth {
-    /// Wide enough for totals side by side, but still one column (the Duo's inner screen).
+    /// Wide enough for totals side by side, but still one column (the Duo's inner screen upright).
     static let roomy: CGFloat = 600
-    /// Wide enough for a list beside its detail: the Duo's inner screen turned sideways (867 pt
-    /// beside its tab bar), iPad, Mac.
+    /// Wide enough for two columns: the Duo's inner screen turned sideways (867 pt beside its
+    /// tab bar), iPad, Mac.
     static let twoColumn: CGFloat = 800
 }
 
@@ -22,70 +22,49 @@ extension EnvironmentValues {
     @Entry var appWidth: CGFloat = 0
 }
 
-/// A NavigationStack, or a list beside its detail once the window is wide enough.
-/// Links inside the list open in the detail column there, so screens need no changes.
-struct AdaptiveNavigation<Content: View, Detail: View>: View {
+/// A screen's sections as two equal columns when the window is wide, or one list when it isn't.
+/// Both columns start on the same line and meet in a gap the size of their outer margins.
+/// Anything opened from either column pushes full width, on the screen's own NavigationStack.
+struct TwoColumnList<Left: View, Right: View>: View {
     @Environment(\.appWidth) private var appWidth
-    @ViewBuilder var content: () -> Content
-    /// What the right column shows before anything in the list is opened.
-    @ViewBuilder var detail: () -> Detail
+    @ViewBuilder var left: () -> Left
+    @ViewBuilder var right: () -> Right
 
     var body: some View {
         if appWidth >= LayoutWidth.twoColumn {
-            NavigationSplitView {
-                content()
-                    // The sidebar column would otherwise restyle the list as a plain sidebar,
-                    // with gray rows on a light panel instead of the app's light cards on gray.
-                    .listStyle(.insetGrouped)
-                    .containerBackground(Color(.systemGroupedBackground), for: .navigation)
-                    .navigationSplitViewColumnWidth(min: 320, ideal: 380, max: 420)
-                    // Both columns stay up; there's room for them and nothing to hide.
-                    .toolbar(removing: .sidebarToggle)
-            } detail: {
-                NavigationStack {
-                    detail()
-                        .containerBackground(Color(.systemGroupedBackground), for: .navigation)
-                }
+            HStack(alignment: .top, spacing: 0) {
+                List { left() }
+                    .contentMargins(.trailing, 10, for: .scrollContent)
+                    .frame(maxWidth: .infinity)
+                List { right() }
+                    .contentMargins(.leading, 10, for: .scrollContent)
+                    .frame(maxWidth: .infinity)
             }
-            .navigationSplitViewStyle(.balanced)
         } else {
-            NavigationStack {
-                content()
+            List {
+                left()
+                right()
             }
         }
     }
 }
 
-extension AdaptiveNavigation where Detail == AdaptivePlaceholder {
-    init(placeholder: String = "Pick something from the list.", systemImage: String = "sidebar.left", @ViewBuilder content: @escaping () -> Content) {
-        self.content = content
-        self.detail = { AdaptivePlaceholder(text: placeholder, systemImage: systemImage) }
-    }
+/// The root tabs. Raw values are what `-screen <tab>` accepts in Debug builds.
+enum AppTab: String, Hashable {
+    case home
+    case accounts
+    case budget
+    case subscriptions
+    case settings
 }
 
-/// The right column's prompt before anything is opened.
-struct AdaptivePlaceholder: View {
-    let text: String
-    let systemImage: String
+/// Switches the root tab, for shortcuts like Home's "See everything on Upcoming".
+struct SelectTabAction {
+    var perform: (AppTab) -> Void = { _ in }
 
-    var body: some View {
-        ZStack {
-            // The same gray as the list beside it. The detail column is an elevated surface,
-            // where the plain grouped background turns white.
-            Color(uiColor: .baseGroupedBackground)
-                .ignoresSafeArea()
-            ContentUnavailableView(text, systemImage: systemImage)
-                .foregroundStyle(.secondary)
-        }
-    }
+    func callAsFunction(_ tab: AppTab) { perform(tab) }
 }
 
-extension UIColor {
-    /// The grouped background's base-level values (light and dark). The detail column is an
-    /// elevated surface, where `systemGroupedBackground` resolves to white instead.
-    static let baseGroupedBackground = UIColor { traits in
-        traits.userInterfaceStyle == .dark
-            ? .black
-            : UIColor(red: 242 / 255, green: 242 / 255, blue: 247 / 255, alpha: 1)
-    }
+extension EnvironmentValues {
+    @Entry var selectTab = SelectTabAction()
 }

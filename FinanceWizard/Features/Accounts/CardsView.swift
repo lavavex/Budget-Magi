@@ -2,8 +2,8 @@
 //  CardsView.swift
 //  Finance Wizard
 //
-//  Accounts hub: credit cards + checking/savings, Plaid logos, credit
-//  liabilities, and collapsible bill payments under spend.
+//  Accounts: every transaction (All accounts), the credit summary and cards, checking and
+//  savings, and payment methods that aren't linked. Upcoming has what's coming due.
 //
 
 import SwiftUI
@@ -54,108 +54,46 @@ struct CardsView: View {
     }
 
     var body: some View {
-        AdaptiveNavigation(placeholder: "Pick an account to see its activity.", systemImage: "building.columns") {
-            List {
-                // MARK: Overview
+        NavigationStack {
+            TwoColumnList {
+                // MARK: Every transaction
                 Section {
-                    if period != .all {
-                        PeriodStepper(period: period, referenceDate: $referenceDate)
-                    }
                     NavigationLink {
-                        CategorySpendView(period: period, referenceDate: referenceDate)
+                        AllAccountsView()
                     } label: {
-                        HStack {
-                            VStack(alignment: .leading, spacing: 4) {
-                                Text("Total Spend")
-                                    .font(.headline)
-                                Text(periodLabel)
+                        Label {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("All accounts")
+                                    .font(.body.weight(.semibold))
+                                Text("Every transaction, with search")
                                     .font(.caption)
                                     .foregroundStyle(.secondary)
-                                Text("Tap for category chart")
-                                    .font(.caption2)
-                                    .foregroundStyle(.tertiary)
                             }
-                            Spacer()
-                            // Spinner while the first board build has no rows yet.
-                            if isBuildingBoard && board.creditRows.isEmpty && board.depositoryRows.isEmpty {
-                                ProgressView()
-                            } else {
-                                MoneyText(board.periodTotalSpend)
-                                    .font(.title3.bold())
-                            }
+                        } icon: {
+                            Image(systemName: "list.bullet.rectangle.portrait")
                         }
-                    }
-
-                    TotalPaidDisclosure(
-                        total: board.totalPaidInPeriod,
-                        payments: board.periodPayments,
-                        periodLabel: periodLabel,
-                        institutionId: nil,
-                        resolveInstitutionId: { institutionId(for: $0) }
-                    )
-
-                    if !creditAccounts.isEmpty {
-                        VStack(alignment: .leading, spacing: 10) {
-                            HStack {
-                                VStack(alignment: .leading, spacing: 2) {
-                                    Text("Credit balance")
-                                        .font(.caption)
-                                        .foregroundStyle(.secondary)
-                                    MoneyText(board.totalOwed)
-                                        .font(.title3.weight(.semibold))
-                                }
-                                Spacer()
-                                VStack(alignment: .trailing, spacing: 2) {
-                                    Text("Limit")
-                                        .font(.caption)
-                                        .foregroundStyle(.secondary)
-                                    MoneyText(board.totalLimit > 0 ? board.totalLimit : 0)
-                                        .font(.subheadline.weight(.semibold))
-                                        .foregroundStyle(.secondary)
-                                }
-                            }
-
-                            if let util = board.totalUtilization {
-                                UtilizationBar(value: util, label: "Overall utilization")
-                            }
-
-                            if board.totalMinimumDue > 0 || board.soonestDueDate != nil {
-                                HStack {
-                                    VStack(alignment: .leading, spacing: 2) {
-                                        Text("Min payments")
-                                            .font(.caption)
-                                            .foregroundStyle(.secondary)
-                                        if board.totalMinimumDue > 0 {
-                                            MoneyText(board.totalMinimumDue)
-                                                .font(.subheadline.weight(.semibold))
-                                        } else {
-                                            Text("—")
-                                                .font(.subheadline)
-                                                .foregroundStyle(.tertiary)
-                                        }
-                                    }
-                                    Spacer()
-                                    VStack(alignment: .trailing, spacing: 2) {
-                                        Text(board.anyOverdue ? "Overdue" : "Next due")
-                                            .font(.caption)
-                                            .foregroundStyle(board.anyOverdue ? .red : .secondary)
-                                        if let due = board.soonestDueDate {
-                                            Text(due, style: .date)
-                                                .font(.subheadline.weight(.semibold))
-                                                .foregroundStyle(board.anyOverdue ? .red : .primary)
-                                        } else {
-                                            Text("—")
-                                                .font(.subheadline)
-                                                .foregroundStyle(.tertiary)
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                        .padding(.vertical, 4)
                     }
                 } header: {
-                    Text("Overview")
+                    Text("Transactions")
+                }
+
+                // MARK: Credit summary
+                if !creditAccounts.isEmpty {
+                    Section {
+                        if period != .all {
+                            PeriodStepper(period: period, referenceDate: $referenceDate)
+                        }
+                        creditSummary
+                        TotalPaidDisclosure(
+                            total: board.totalPaidInPeriod,
+                            payments: board.periodPayments,
+                            periodLabel: periodLabel,
+                            institutionId: nil,
+                            resolveInstitutionId: { institutionId(for: $0) }
+                        )
+                    } header: {
+                        Text("Credit")
+                    }
                 }
 
                 if let syncBanner {
@@ -164,51 +102,6 @@ struct CardsView: View {
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
-                }
-
-                // MARK: Upcoming bills (next 30 days)
-                if !board.upcomingBills.isEmpty {
-                    Section {
-                        ForEach(board.upcomingBills, id: \.accountId) { account in
-                            UpcomingBillRow(
-                                account: account,
-                                installmentIncluded: PayoffPlanProgress.installmentIncludedInMin(
-                                    on: account,
-                                    plans: Array(payoffPlans)
-                                ),
-                                interestSavingBalance: PayoffPlanProgress.interestSavingBalance(
-                                    on: account,
-                                    plans: Array(payoffPlans)
-                                )
-                            )
-                        }
-                    } header: {
-                        Text("Upcoming bills")
-                    }
-                }
-
-                // MARK: Credit cards
-                Section {
-                    if isBuildingBoard && board.creditRows.isEmpty {
-                        HStack {
-                            ProgressView()
-                            Text("Loading accounts…")
-                                .foregroundStyle(.secondary)
-                        }
-                    } else if board.creditRows.isEmpty {
-                        ContentUnavailableView(
-                            "No credit cards",
-                            systemImage: "creditcard",
-                            description: Text("Link a bank in Settings, then Sync on Transactions.")
-                        )
-                        .listRowBackground(Color.clear)
-                    } else {
-                        ForEach(board.creditRows) { row in
-                            accountNavigationLink(row: row)
-                        }
-                    }
-                } header: {
-                    Text("Credit cards")
                 }
 
                 // MARK: Checking / savings
@@ -232,7 +125,33 @@ struct CardsView: View {
                         }
                     } header: {
                         Text("Other spend")
+                    } footer: {
+                        Text("Payment methods with spending in \(TotalPaidDisclosure.inSentence(periodLabel)) that aren't a linked account.")
                     }
+                }
+            } right: {
+                // MARK: Credit cards
+                Section {
+                    if isBuildingBoard && board.creditRows.isEmpty {
+                        HStack {
+                            ProgressView()
+                            Text("Loading accounts…")
+                                .foregroundStyle(.secondary)
+                        }
+                    } else if board.creditRows.isEmpty {
+                        ContentUnavailableView(
+                            "No credit cards",
+                            systemImage: "creditcard",
+                            description: Text("Link a bank in Settings, then Sync on Home.")
+                        )
+                        .listRowBackground(Color.clear)
+                    } else {
+                        ForEach(board.creditRows) { row in
+                            accountNavigationLink(row: row)
+                        }
+                    }
+                } header: {
+                    Text("Credit cards")
                 }
             }
             .navigationTitle("Accounts")
@@ -273,6 +192,62 @@ struct CardsView: View {
                 rebuildBoard()
             }
         }
+    }
+
+    /// Balance, limit, utilization, and what's due across every card.
+    private var creditSummary: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Credit balance")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    MoneyText(board.totalOwed)
+                        .font(.title3.weight(.semibold))
+                }
+                Spacer()
+                VStack(alignment: .trailing, spacing: 2) {
+                    Text("Limit")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    MoneyText(board.totalLimit > 0 ? board.totalLimit : 0)
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                }
+            }
+            if let util = board.totalUtilization {
+                UtilizationBar(value: util, label: "Overall utilization")
+            }
+            if board.totalMinimumDue > 0 || board.soonestDueDate != nil {
+                HStack {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Min payments")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                        if board.totalMinimumDue > 0 {
+                            MoneyText(board.totalMinimumDue)
+                                .font(.subheadline.weight(.semibold))
+                        } else {
+                            Text("—")
+                                .font(.subheadline)
+                                .foregroundStyle(.tertiary)
+                        }
+                    }
+                    Spacer()
+                    VStack(alignment: .trailing, spacing: 2) {
+                        Text(board.anyOverdue ? "Overdue" : "Next due")
+                            .font(.caption)
+                            .foregroundStyle(board.anyOverdue ? .red : .secondary)
+                        if let due = board.soonestDueDate {
+                            Text(due, style: .date)
+                                .font(.subheadline.weight(.semibold))
+                                .foregroundStyle(board.anyOverdue ? .red : .primary)
+                        }
+                    }
+                }
+            }
+        }
+        .padding(.vertical, 4)
     }
 
     // MARK: - Board rebuild

@@ -30,7 +30,7 @@ Beta updates install through TestFlight. Feedback (screenshots, notes) can be se
 
 1. You’ll see a short **splash** (app icon), then **Welcome**.
 2. Read the three points, tap **Get Started**.
-3. The tab bar appears: **Transactions**, **Accounts**, **Budget**, **Upcoming**, **Settings**.
+3. The tab bar appears: **Home**, **Accounts**, **Budget**, **Upcoming**, **Settings**.
 
 Later launches skip Welcome and go straight to the tabs.
 
@@ -48,13 +48,13 @@ Keys stay on this iPhone (the secret is in the Keychain). They are not uploaded 
 
 ## 4. Link a bank and sync
 
-1. **Settings → Link bank account** (or **Transactions → Sync → Link bank account**).
+1. **Settings → Link bank account** (or **Home → Sync → Link bank account**).
 2. Finish sign-in in the system browser Plaid opens.
-3. Go to **Transactions** → **Sync → Sync now** (or pull down to refresh).
+3. Go to **Home** → **Sync → Sync now** (or pull down to refresh).
 
 **Sandbox (test banks):** search **First Platypus Bank**, username `user_good`, password `pass_good`.
 
-After a successful sync, charges show on **Transactions**, cards and balances on **Accounts**. Pull down again anytime you want new activity.
+After a successful sync, your month shows on **Home**, and every charge is under **Accounts → All accounts**. Pull down again anytime you want new activity.
 
 If Link asks you to sign in again later, **Settings** → swipe the bank → **Relink**.
 
@@ -62,8 +62,8 @@ If Link asks you to sign in again later, **Settings** → swipe the bank → **R
 
 | Tab | What it’s for |
 |-----|----------------|
-| **Transactions** | Spend and income for a week/month, search, categories, **Sync** |
-| **Accounts** | Cards, checking/savings, utilization, bills due |
+| **Home** | This month at a glance, cash and card balances, what's due next, to-dos, **Sync** |
+| **Accounts** | Every transaction (**All accounts**), credit cards, checking and savings |
 | **Budget** | Monthly cap and category limits vs real spend |
 | **Upcoming** | Card payments coming due, detected subscriptions, repeating bills, and card payoff plans (My Loan, Pay Over Time, promo APR) |
 | **Settings** | Plaid keys, linked banks, backup, privacy |

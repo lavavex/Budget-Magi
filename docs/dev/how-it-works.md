@@ -56,11 +56,11 @@ Flag key: `OnboardingStore.storageKey` = `settings.onboardingCompleted` (`Onboar
 
 ## Tabs (`ContentView`)
 
-Transactions is built at launch. Other tabs are **lazy** (`loadedTabs`) so cold start stays light.
+Home is built at launch. Other tabs are **lazy** (`loadedTabs`) so cold start stays light.
 
 | Tab | View | File |
 |-----|------|------|
-| Transactions | `AllTransactionsView` | `ContentView.swift` (same file) |
+| Home | `HomeView` | `Features/Home/HomeView.swift` |
 | Accounts | `CardsView` | `Features/Accounts/CardsView.swift` |
 | Budget | `BudgetView` | `Features/Budget/BudgetView.swift` |
 | Upcoming | `SubscriptionsView` | `Features/Transactions/SubscriptionsView.swift` |
@@ -124,9 +124,12 @@ Webhook worker (`workers/plaid-webhooks/`) acknowledges Plaid events and discard
 
 ## How each tab uses that data
 
-### Transactions
+### Home and All accounts
 
-`AllTransactionsView` `@Query`s `Transaction` and `Income`, filters with `TransactionAnalytics` + `PeriodFilterMenu.swift`. Rows: `TransactionRows.swift`. Tap → `TransactionDetailView.swift` (category / rail / learn rule). Save sets locks so Sync won’t overwrite. **Needs review:** `ReviewQueueView.swift`. Category charts: `CategorySpendView.swift` + `Shared/UI/CategorySpendChart.swift`. Plaid `classify`: on a **credit** account, money-in that is not a bill pay is `.adjustment` (Refund), not Income. Checking-side merchant refunds / reimbursements are also `.adjustment` — **Total Income** is earnings only (Payroll, Direct Deposit, Interest, Other Income). Tax refunds stay income. `LOAN_DISBURSEMENTS` / card-line loan titles are Loan (not earnings) — the issuers’ real wording (“My Chase Loan”, “loan to <digits>”) as well as the generic “my loan”. Instalment billing covers AmEx **Plan It** and **My Chase Plan** too (`PayoffPlanRecognition`); financing *fees* (`PLAN FEE - …`, `ANNUAL MEMBERSHIP FEE`) are **Fees**, since Installment is excluded from spend and a fee is a real cost. Card-payment title needles are split into strong and weak sets; weak ones (`autopay`, `ach pmt`, …) only apply to money-in on a credit account, so a VERIZON \*AUTOPAY bill stays spend. Weak categories (Miscellaneous / “Other”) may refine from **generic title words** (`TitleCategoryHints`: wireless, installment, games) — not a per-user merchant list. `CreditAnalytics` matches checking ACH to the card Thank You by last-four or issuer (`CardIssuerCatalog`). Real-descriptor contract: `Shared/Analytics/ClassifierRegression.swift` (run via **FinanceWizardTests** or Debug → **Run classifier cases**).
+`HomeView` reads the month from `BudgetAnalytics.snapshot` (the same numbers as Budget), balances from `BankAccount`, the next card payment from `AccountsBoard.upcomingCardPayments`, and the next bill from `SubscriptionAnalytics` detection; it runs Sync through `AppSync`. Every transaction lives in `Features/Accounts/AllAccountsView.swift`, opened from the top of Accounts.
+
+
+`AllAccountsView` `@Query`s `Transaction` and `Income`, filters with `TransactionAnalytics` + `PeriodFilterMenu.swift`. Rows: `TransactionRows.swift`. Tap → `TransactionDetailView.swift` (category / rail / learn rule). Save sets locks so Sync won’t overwrite. **Needs review:** `ReviewQueueView.swift`. Category charts: `CategorySpendView.swift` + `Shared/UI/CategorySpendChart.swift`. Plaid `classify`: on a **credit** account, money-in that is not a bill pay is `.adjustment` (Refund), not Income. Checking-side merchant refunds / reimbursements are also `.adjustment` — **Total Income** is earnings only (Payroll, Direct Deposit, Interest, Other Income). Tax refunds stay income. `LOAN_DISBURSEMENTS` / card-line loan titles are Loan (not earnings) — the issuers’ real wording (“My Chase Loan”, “loan to <digits>”) as well as the generic “my loan”. Instalment billing covers AmEx **Plan It** and **My Chase Plan** too (`PayoffPlanRecognition`); financing *fees* (`PLAN FEE - …`, `ANNUAL MEMBERSHIP FEE`) are **Fees**, since Installment is excluded from spend and a fee is a real cost. Card-payment title needles are split into strong and weak sets; weak ones (`autopay`, `ach pmt`, …) only apply to money-in on a credit account, so a VERIZON \*AUTOPAY bill stays spend. Weak categories (Miscellaneous / “Other”) may refine from **generic title words** (`TitleCategoryHints`: wireless, installment, games) — not a per-user merchant list. `CreditAnalytics` matches checking ACH to the card Thank You by last-four or issuer (`CardIssuerCatalog`). Real-descriptor contract: `Shared/Analytics/ClassifierRegression.swift` (run via **FinanceWizardTests** or Debug → **Run classifier cases**).
 
 ### Accounts
 

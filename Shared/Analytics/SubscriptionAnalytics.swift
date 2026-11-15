@@ -312,6 +312,15 @@ enum SubscriptionAnalytics {
 
     /// Past its usual date by about half a cycle, so it may have ended or moved to another
     /// account. Still listed until `isActive` gives up on it.
+    /// When a bill should charge next: one cadence after its last charge.
+    nonisolated static func nextChargeDate(for candidate: SubscriptionCandidate, calendar: Calendar = .current) -> Date? {
+        switch candidate.cadence {
+        case .weekly: calendar.date(byAdding: .day, value: 7, to: candidate.lastDate)
+        case .monthly: calendar.date(byAdding: .month, value: 1, to: candidate.lastDate)
+        case .yearly: calendar.date(byAdding: .year, value: 1, to: candidate.lastDate)
+        }
+    }
+
     nonisolated static func isOverdue(_ candidate: SubscriptionCandidate, now: Date = Date()) -> Bool {
         let days: Int = {
             switch candidate.cadence {

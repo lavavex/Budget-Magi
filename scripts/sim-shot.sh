@@ -61,7 +61,7 @@ fi
 if [ "$#" -gt 0 ]; then
   screens=("$@")
 else
-  screens=(transactions accounts budget subscriptions settings)
+  screens=(home accounts budget upcoming settings)
 fi
 
 for device in "iPhone 17" "iPhone Duo"; do

@@ -125,7 +125,8 @@ struct TransactionDetailView: View {
     }
 
     var body: some View {
-        Form {
+        // Two columns when wide: the charge on the left, what you can change on the right.
+        TwoColumnList {
             Section {
                 HStack(spacing: 12) {
                     Image(systemName: CategoryStyle.symbolName(for: categoryText.isEmpty ? transaction.category : categoryText))
@@ -142,6 +143,8 @@ struct TransactionDetailView: View {
                     }
                 }
                 .padding(.vertical, 4)
+            } header: {
+                Text("Charge")
             }
 
             if !TransactionAnalytics.isExcludedFromSpend(transaction) {
@@ -174,7 +177,7 @@ struct TransactionDetailView: View {
                             displayName: CardLabelStore.label(
                                 paymentMethod: transaction.paymentMethod,
                                 accountId: linkedAccount?.accountId,
-                                fallback: transaction.paymentMethod
+                                fallback: linkedAccount?.displayName ?? transaction.paymentMethod
                             ),
                             institutionId: linkedAccount?.institutionId,
                             institutionName: linkedAccount?.institutionName
@@ -183,7 +186,7 @@ struct TransactionDetailView: View {
                             CardLabelStore.label(
                                 paymentMethod: transaction.paymentMethod,
                                 accountId: linkedAccount?.accountId,
-                                fallback: transaction.paymentMethod
+                                fallback: linkedAccount?.displayName ?? transaction.paymentMethod
                             )
                         )
                         .multilineTextAlignment(.trailing)
@@ -220,7 +223,7 @@ struct TransactionDetailView: View {
                     }
                 }
             }
-
+        } right: {
             Section {
                 Picker("Category", selection: categoryPickerBinding) {
                     ForEach(categoryOptions, id: \.self) { name in

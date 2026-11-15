@@ -152,7 +152,8 @@ struct CardDetailView: View {
     // }
 
     var body: some View {
-        List {
+        // Two columns when wide: the account on the left, its activity on the right.
+        TwoColumnList {
             Section {
                 InstitutionLogoHeader(
                     displayName: titleName.isEmpty ? displayName : titleName,
@@ -411,6 +412,7 @@ struct CardDetailView: View {
                 }
             }
 
+        } right: {
             if statementGroups.isEmpty {
                 Section("Activity") {
                     Text("No transactions on this account yet.")

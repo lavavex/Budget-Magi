@@ -14,7 +14,6 @@ import SwiftData
 /// Built once (or when inputs change), then the UI only reads these precomputed fields.
 /// Not a View — pure data so heavy work stays out of SwiftUI’s body.
 struct AccountsBoard {
-    var periodTotalSpend: Double = 0
     var totalOwed: Double = 0
     var totalLimit: Double = 0
     // Optional because utilization is undefined when totalLimit is 0.
@@ -24,7 +23,6 @@ struct AccountsBoard {
     var soonestDueDate: Date? = nil
     var anyOverdue: Bool = false
     var periodPayments: [CreditCardPayment] = []
-    var upcomingBills: [BankAccount] = []
     var creditRows: [UnifiedCardRow] = []
     var depositoryRows: [UnifiedCardRow] = []
     var otherSpendRows: [UnifiedCardRow] = []
@@ -46,7 +44,6 @@ struct AccountsBoard {
             period: period,
             referenceDate: referenceDate
         )
-        board.periodTotalSpend = index.totalSpend
         board.periodPayments = CreditAnalytics.payments(
             in: payments,
             period: period,
@@ -66,7 +63,7 @@ struct AccountsBoard {
         board.totalMinimumDue = creditAccounts.compactMap(\.minimumPaymentAmount).reduce(0, +)
         board.anyOverdue = creditAccounts.contains { $0.isOverdue == true }
 
-        // Upcoming bills: overdue or due within 30 days.
+        // Next due: overdue or due within 30 days.
         let cal = Calendar.current
         let today = cal.startOfDay(for: Date())
         let horizon = cal.date(byAdding: .day, value: 30, to: today)
@@ -87,12 +84,6 @@ struct AccountsBoard {
             .filter(isLiveDueDate)
             .compactMap(\.nextPaymentDueDate)
             .min()
-        board.upcomingBills = creditAccounts
-            .filter(isLiveDueDate)
-            .sorted {
-                // Missing dates sort last.
-                ($0.nextPaymentDueDate ?? .distantFuture) < ($1.nextPaymentDueDate ?? .distantFuture)
-            }
 
         // PERF: the credit loop below used to run `transactions.filter { … }` per card, so a
         // 5-card wallet walked all 3,232 rows five times and recomputed cardName(for:) each
@@ -215,6 +206,14 @@ struct AccountsBoard {
         }
 
         return board
+    }
+
+    /// Cards with a payment coming, soonest first: on Upcoming and Home. A due date that passed
+    /// without the bank marking the card overdue is old data rather than a bill.
+    static func upcomingCardPayments(_ accounts: [BankAccount]) -> [BankAccount] {
+        accounts
+            .filter { $0.isCredit && $0.nextPaymentDueDate != nil && ($0.isOverdue == true || !$0.dueDateIsStale) }
+            .sorted { ($0.nextPaymentDueDate ?? .distantFuture) < ($1.nextPaymentDueDate ?? .distantFuture) }
     }
 
     /// Filter period payments that belong to a given credit account / payment-method set.
@@ -340,6 +339,32 @@ struct UpcomingBillRow: View {
     }
 }
 
+/// A card payment that opens its card: on Upcoming and Home.
+struct UpcomingCardLink: View {
+    let account: BankAccount
+    /// Every payment-method string in use, for the card's own activity.
+    let methods: Set<String>
+    let plans: [PayoffPlan]
+
+    var body: some View {
+        NavigationLink {
+            CardDetailView(
+                displayName: account.displayName,
+                rawPaymentMethod: account.plaidDisplayName,
+                matchingPaymentMethods: account.matchingPaymentMethods(in: methods),
+                creditAccount: account,
+                bankAccount: account
+            )
+        } label: {
+            UpcomingBillRow(
+                account: account,
+                installmentIncluded: PayoffPlanProgress.installmentIncludedInMin(on: account, plans: plans),
+                interestSavingBalance: PayoffPlanProgress.interestSavingBalance(on: account, plans: plans)
+            )
+        }
+    }
+}
+
 // MARK: - Total paid disclosure
 
 /// Expandable “Total paid” row listing credit-card bill payments in the period.
@@ -351,7 +376,7 @@ struct TotalPaidDisclosure: View {
     var resolveInstitutionId: ((CreditCardPayment) -> String?)? = nil
 
     /// "This month" reads as "this month" mid-sentence, while "June 2026" keeps its capital.
-    private static func inSentence(_ label: String) -> String {
+    static func inSentence(_ label: String) -> String {
         guard label.hasPrefix("This ") || label.hasPrefix("Last ") || label == "All time" else { return label }
         return label.prefix(1).lowercased() + label.dropFirst()
     }

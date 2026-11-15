@@ -110,12 +110,9 @@ struct SubscriptionsView: View {
     }
     // MARK: Card payments
 
-    /// Cards with a payment coming, soonest first. A date that passed without the bank marking
-    /// the card overdue is old data rather than a bill, as on Accounts.
+    /// Cards with a payment coming, soonest first.
     private var cardsDue: [BankAccount] {
-        accounts
-            .filter { $0.isCredit && $0.nextPaymentDueDate != nil && ($0.isOverdue == true || !$0.dueDateIsStale) }
-            .sorted { ($0.nextPaymentDueDate ?? .distantFuture) < ($1.nextPaymentDueDate ?? .distantFuture) }
+        AccountsBoard.upcomingCardPayments(accounts)
     }
 
     private var cardMinimumsDue: Double {
@@ -136,21 +133,11 @@ struct SubscriptionsView: View {
     }
 
     private func cardDueLink(_ account: BankAccount) -> some View {
-        NavigationLink {
-            CardDetailView(
-                displayName: account.displayName,
-                rawPaymentMethod: account.plaidDisplayName,
-                matchingPaymentMethods: account.matchingPaymentMethods(in: Set(transactions.map(TransactionAnalytics.cardName(for:)))),
-                creditAccount: account,
-                bankAccount: account
-            )
-        } label: {
-            UpcomingBillRow(
-                account: account,
-                installmentIncluded: PayoffPlanProgress.installmentIncludedInMin(on: account, plans: Array(payoffPlans)),
-                interestSavingBalance: PayoffPlanProgress.interestSavingBalance(on: account, plans: Array(payoffPlans))
-            )
-        }
+        UpcomingCardLink(
+            account: account,
+            methods: Set(transactions.map(TransactionAnalytics.cardName(for:))),
+            plans: Array(payoffPlans)
+        )
     }
 
     // MARK: Layout
@@ -163,23 +150,10 @@ struct SubscriptionsView: View {
 
     var body: some View {
         NavigationStack(path: $path) {
-            Group {
-                if twoColumns {
-                    // Each list keeps its outer margin; the inner ones meet in a gap of the same size.
-                    HStack(alignment: .top, spacing: 0) {
-                        List { calendarSections }
-                            .contentMargins(.trailing, 10, for: .scrollContent)
-                            .frame(maxWidth: .infinity)
-                        List { billSections }
-                            .contentMargins(.leading, 10, for: .scrollContent)
-                            .frame(maxWidth: .infinity)
-                    }
-                } else {
-                    List {
-                        calendarSections
-                        billSections
-                    }
-                }
+            TwoColumnList {
+                calendarSections
+            } right: {
+                billSections
             }
             .navigationTitle("Upcoming")
             .navigationDestination(for: String.self) { id in
@@ -594,7 +568,7 @@ struct SubscriptionsView: View {
     }
 
     private func nextChargeDate(for item: SubscriptionCandidate) -> Date? {
-        chargeDate(for: item, step: 1)
+        SubscriptionAnalytics.nextChargeDate(for: item)
     }
 
     private func chargeDate(for item: SubscriptionCandidate, step: Int) -> Date? {

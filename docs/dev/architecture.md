@@ -129,8 +129,8 @@ RootWithSplash
 └── OnboardingGate
       ├── OnboardingView      (Welcome, if settings.onboardingCompleted is false)
       └── ContentView TabView
-            ├── Transactions  (AllTransactionsView)
-            ├── Accounts      (CardsView → CardDetailView)
+            ├── Home          (HomeView)
+            ├── Accounts      (CardsView → AllAccountsView, CardDetailView)
             ├── Budget        (BudgetView)
             ├── Upcoming      (SubscriptionsView)
             └── Settings      (SettingsView → DebugMenuView)
@@ -139,7 +139,7 @@ RootWithSplash
 See [How it works](how-it-works.md) for the file-level map. See [Onboarding](onboarding.md).
 
 
-**Layout by width.** `App/AdaptiveLayout.swift` publishes the window's width as `appWidth` from `ContentView`. Size class can't separate the iPhone Duo's cover (466 pt), its inner screen, and an iPad, since all report regular width; beside the side tab bar the inner screen gives the app 867 pt sideways. At `LayoutWidth.roomy` (600 pt) Transactions puts its totals side by side. At `LayoutWidth.twoColumn` (800 pt) `AdaptiveNavigation` swaps a tab's `NavigationStack` for a `NavigationSplitView`, so links open in the detail column; its sidebar takes `containerBackground` so cards stay light on gray, and `UIColor.baseGroupedBackground` paints the detail placeholder, because the detail column is an elevated surface where `systemGroupedBackground` turns white. Upcoming instead splits into two equal lists, and Settings builds its own split (`SettingsPage` rows with icon tiles, each page a `Form` of the same sections the one-column form uses). Card nicknames are also kept under `card:<bank>|<last four>` in `CardLabelStore`, because relinking a bank gives every account a new id.
+**Layout by width.** `App/AdaptiveLayout.swift` publishes the window's width as `appWidth` from `ContentView`. Size class can't separate the iPhone Duo's cover (466 pt), its inner screen, and an iPad, since all report regular width; beside the side tab bar the inner screen gives the app 867 pt sideways. At `LayoutWidth.roomy` (600 pt) All accounts puts its totals side by side. At `LayoutWidth.twoColumn` (800 pt) `TwoColumnList` shows a screen's sections as two equal inset-grouped lists that start on the same line (10 pt each side of the gap); narrower, the same sections stack in one list. Home, Accounts, All accounts, card detail, transaction detail, Budget, and Upcoming use it, and anything opened pushes full width. Only Settings builds a `NavigationSplitView` (`SettingsPage` rows with icon tiles, each page a `Form` of the same sections the one-column form uses; the sidebar takes `containerBackground` so cards stay light on gray). Home switches tabs through the `selectTab` environment action. Card nicknames are also kept under `card:<bank>|<last four>` in `CardLabelStore`, because relinking a bank gives every account a new id.
 ## Persistence
 
 | Concern | Technology |

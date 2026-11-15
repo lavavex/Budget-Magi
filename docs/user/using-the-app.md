@@ -11,58 +11,59 @@ Install and first Sync: [Getting started](getting-started.md).
 
 Splash (app icon) → **Welcome** → **Get Started** → tabs. Later launches skip Welcome.
 
-## Transactions
+## Home
 
-Your charges and income for the selected period.
+A quick look at your money. The arrows step back or forward a month.
+
+- **At a glance** — what you've spent this month (tap for the category chart), with what's left of your monthly budget if you set one; income so far, and whether it's ahead of or behind the paychecks you expect by now; and net.
+- **Money** — cash available in checking and savings, what you owe on cards, and overall utilization. **See accounts** opens Accounts.
+- **What's next** — the next card payment (tap to open the card) and the next bill. **See everything on Upcoming** opens Upcoming.
+- **To do** — **Needs review** (items that still need a category or bill-pay check; swipe to fix) and **Monthly recap**.
+- **Top categories** — where most of this month went.
+
+**Sync** is here: Sync now, Force bank refresh, Full re-sync, and Link bank account. Pull down to Sync too. After a Sync, a short line says whether your banks are up to date, with the full counts under **Details**; dismiss it with the **×**.
+
+## Accounts
+
+Your accounts in detail.
+
+- **All accounts** — every transaction from every account (below).
+- **Credit** — total balance, limit, utilization, minimum payments, the next due date, and **Total paid** (card bill payments, not spend) for the period. The arrows step through months.
+- **Credit cards**, **Checking & savings**, and **Other spend** (payment methods with spending that aren't a linked account).
+
+Cards your bank names only "CREDIT CARD" show as the bank and last four (Chase ···4103) until you give them a name: open the card and set **Display name**. A name you set stays with the card if you relink the bank, since it's kept by bank and last four as well.
+
+Open a card to see **all** activity by **statement period**. The card row and the card screen always show the same cycle: **This statement** while one is open, **Last statement** when nothing has posted since the close. A due date that has passed without the bank flagging the card overdue shows **Due date passed** until the next Sync. **Interest saving balance** (on the card) is other balances in full plus this statement's loan/installment payment — pay that to stay on the loan schedule without paying the loan off early.
+
+Pull down to Sync; it refreshes Apple Card too, the same as **Sync** on Home.
+
+### All accounts
+
+Every charge and deposit for the selected period.
 
 - **Total Spend** — purchases this week / month / all time (all cards). Tap for category charts (bars or pie).
 - **Total Income** — money in for the same period (not part of spend).
 - **Net** — income minus spend.
-- Hiding a card from the list does **not** change the totals.
 
-**Income** and **Expenses** are separate lists. **Total Income** is earnings (paychecks, direct deposits, interest). Merchant refunds, card credits, and loan proceeds stay in the expense list as **Refund** / **Loan** and do not inflate income. Pull down to **Sync**. Toolbar:
+**Income** and **Expenses** are separate lists. **Total Income** is earnings (paychecks, direct deposits, interest). Merchant refunds, card credits, and loan proceeds stay in the expense list as **Refund** / **Loan** and do not inflate income. Toolbar:
 
 | Control | What it does |
 |---------|----------------|
-| **Sync** | Sync now, Full re-sync, Link bank account |
 | Search | Title, category, amount, last four, nickname. The field stays at the top of the list. |
 | Calendar | This week / This month / All time |
 | Sort | Date, amount, name |
-| Eye | Hide cards from the **list only** |
 
 The arrows at the top of the totals step back or forward a week or month at a time.
 
-After **Sync**, a short line says whether your banks are up to date, with the full counts under **Details**; dismiss it with the **×**.
+Tap a row for **Transaction** detail. You can change the **category** and how it was **paid with** (card or bank transfer). Pick **Custom…** to type a category of your own. **Save** turns on once something changed, and keeps it so later Syncs don’t overwrite it. **Technical details** holds the bank's raw fields, for reporting a problem. Turn on **learn** to apply the same category to future charges from that merchant. Rows show the day the bank posted the charge; the detail also shows the purchase day when it's different.
 
-**Needs review** — items that still need a category or bill-pay check. Swipe to fix.
-
-Tap a row for **Transaction** detail. You can change the **category** and how it was **paid with** (card or bank transfer). Pick **Custom…** to type a category of your own. **Save** turns on once something changed, and keeps it so later Syncs don’t overwrite it. **Technical details** holds the bank's raw fields, for reporting a problem. Turn on **learn** to apply the same category to future charges from that merchant.
-
-**Recurring** on that screen: **Auto-detect**, **Yearly**, **Monthly**, **Weekly**, or **Not recurring**. Use **Monthly** or **Yearly** for bills whose amount changes, like phone and electric — the Upcoming tab groups that merchant even when the dollar amount is different each time.
+**Repeats** on that screen: **Auto-detect**, **Yearly**, **Monthly**, **Weekly**, or **Not recurring**. Use **Monthly** or **Yearly** for bills whose amount changes, like phone and electric — the Upcoming tab groups that merchant even when the dollar amount is different each time.
 
 **Credit Card Payment** (shown as “Bill pay”) is a payment to a card, not a purchase. It stays in the list but is **not** in Total Spend, charts, or widgets. It also shows under Accounts → Total paid. Checking ACH and the card’s “Thank You” are the **same** payment — Total paid counts it once even if the bank posts them a day or two apart. Some banks post a card payment as just **PAYMENT** or **ACH PMT**. When one of your linked cards received that exact amount within a few days, Sync files the bank line as the card payment. To undo one, open it and set the category yourself.
 
 A charge still **Pending** after ten days shows **may have dropped**: the bank usually posts or releases a hold within a few days, so it likely won't post.
 
 **Loan** / **Installment** also stay in the list but are **not** Total Spend or Total Income. **Refund** rows aren’t income, and they reduce **Total Spend** in the month they post. Budget categories and charts show what you spent before refunds. Card statement credits (travel credit, merchant returns) and My Loan deposits to checking are not paychecks. Issuer **installment** billing (My Chase Plan, Amex Plan It) is the billing of a purchase already in the list — use **Pay over time…** if you want them on Upcoming.
-
-## Accounts
-
-Credit cards plus checking and savings.
-
-Cards your bank names only "CREDIT CARD" show as the bank and last four (Chase ···4103) until you give them a name: open the card and set **Display name**. A name you set stays with the card if you relink the bank, since it's kept by bank and last four as well.
-
-| You’ll see | Meaning |
-|------------|---------|
-| **Total Spend** | Purchases this period (tap for categories) |
-| **Total paid** | Card bill payments (not spend) |
-| **Credit balance / limit / utilization** | From your bank on Sync |
-| **Min payments / next due** | When the bank reports them. **Interest saving balance** (on the card) is other balances in full plus this statement’s loan/installment payment — pay that to stay on the loan schedule without paying the loan off early. |
-| **Upcoming bills** | Due in the next 30 days (or overdue). A due date more than a week old that the bank has not flagged overdue is treated as stale and dropped, so a bank that stops refreshing does not pin an old bill here forever. |
-
-Open a card to see **all** activity by **statement period** (not the Accounts week/month filter). The card row on Accounts and the card screen always show the same cycle: **This statement** while one is open, **Last statement** when nothing has posted since the close. A due date that has passed without the bank flagging the card overdue shows **Due date passed** until the next Sync.
-
-Pull down to Sync; it refreshes Apple Card too, the same as **Sync** on Transactions.
 
 ### Loans, installments, and pay-off-by-date
 
@@ -89,7 +90,7 @@ Ask can set up the **Budget** tab. After it builds a budget, tap **Use this budg
 
 **Why?** Open Total Spend for **Why this total?**, tap a category for why it changed, or open a charge for **Why this charge?** The app works out what changed itself, so these still work without Apple Intelligence, which only adds a short summary on top.
 
-**Monthly recap** (under Tools) shows a month's income, spending, category changes, price changes, new merchants, largest charges, and anything over budget. Tap one of the largest charges to open it. A month with nothing in it just says so.
+**Monthly recap** (on Home, under To do) shows a month's income, spending, category changes, price changes, new merchants, largest charges, and anything over budget. Tap one of the largest charges to open it. A month with nothing in it just says so.
 
 **Search with AI** appears when you type a sentence into search, like "Amazon over $50 in August". You get the real matching rows, with the filters it used shown on top.
 
@@ -113,7 +114,7 @@ Bills that missed their usual date are listed under **Hasn't charged lately** an
 
 ## Budget
 
-A **monthly cap**, **expected income**, and **per-category limits** compared to real spend. The monthly cap saves when you leave the field. With no categories yet, **Build a budget with Ask** asks Ask to make one. Remaining / over updates as new charges sync. **Add category limit** starts on a category without a limit, and warns before replacing one that has a limit. **Cards due** lists statement minimums in this period (loans/installments are already inside the min) plus any extra principal from a pay-off-by-date plan. Income received is compared with the paychecks expected so far, so a payday later in the month isn't counted as missing. A card whose due date has gone by without the bank marking it overdue shows "Was due … · Sync to update", since the new date arrives with the next Sync.
+A **monthly cap**, **expected income**, and **per-category limits** compared to real spend. The monthly cap saves when you leave the field. With no categories yet, **Build a budget with Ask** asks Ask to make one. Remaining / over updates as new charges sync. **Add category limit** starts on a category without a limit, and warns before replacing one that has a limit. Income received is compared with the paychecks expected so far, so a payday later in the month isn't counted as missing. A card whose due date has gone by without the bank marking it overdue shows "Was due … · Sync to update", since the new date arrives with the next Sync.
 
 ## Settings
 
@@ -130,8 +131,11 @@ A **monthly cap**, **expected income**, and **per-category limits** compared to 
 
 With iPhone Duo unfolded and turned sideways (and on iPad or Mac), the app uses two columns:
 
-- **Transactions** and **Accounts** show the list on the left and what you open on the right. Transactions starts with the category chart there.
+- **Home** puts At a glance and Money on the left, What's next, To do and Top categories on the right.
+- **Accounts** puts All accounts, Credit, Checking & savings and Other spend on the left, and your credit cards on the right.
+- **All accounts** puts the totals and income on the left and expenses on the right; a card puts its summary on the left and its statements on the right; a transaction puts the charge on the left and what you can change on the right.
+- **Budget** puts the month, expected income and the overall budget on the left, categories on the right.
 - **Upcoming** puts the calendar and the day you pick on the left, and the summary, cards due, and bills on the right.
 - **Settings** looks like the Settings app: a list of pages with colored icons on the left, the page on the right.
 
-Unfolded and held upright, the app stays one column, with Transactions' totals side by side.
+Unfolded and held upright, the app stays one column, with All accounts' totals side by side. Anything you open fills the screen, and both columns of a page start on the same line.

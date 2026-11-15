@@ -99,4 +99,23 @@ final class DisplayTextTests: XCTestCase {
         XCTAssertEqual(CardLabelStore.label(accountId: "new-id", institution: "Example Bank", mask: "1234", fallback: "Example Bank ···1234"), "Travel Card")
         XCTAssertEqual(CardLabelStore.label(accountId: "other-id", institution: "Example Bank", mask: "9999", fallback: "Example Bank ···9999"), "Example Bank ···9999")
     }
+
+    // MARK: - Card payments coming up
+
+    func testUpcomingCardPaymentsSkipStaleDatesAndSortSoonestFirst() {
+        let day: TimeInterval = 24 * 60 * 60
+        func card(_ id: String, due: Date?, overdue: Bool? = nil, type: String = "credit") -> BankAccount {
+            BankAccount(accountId: id, itemId: "i", name: id, mask: "0000", type: type, institutionName: "Example Bank",
+                        currentBalance: 100, isOverdue: overdue, nextPaymentDueDate: due)
+        }
+        let accounts = [
+            card("later", due: Date().addingTimeInterval(10 * day)),
+            card("soon", due: Date().addingTimeInterval(2 * day)),
+            card("stale", due: Date().addingTimeInterval(-5 * day)),
+            card("overdue", due: Date().addingTimeInterval(-5 * day), overdue: true),
+            card("checking", due: Date().addingTimeInterval(1 * day), type: "depository"),
+            card("none", due: nil),
+        ]
+        XCTAssertEqual(AccountsBoard.upcomingCardPayments(accounts).map(\.accountId), ["overdue", "soon", "later"])
+    }
 }
