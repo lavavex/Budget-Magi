@@ -38,13 +38,13 @@ After **Sync**, a short line says whether your banks are up to date, with the fu
 
 Tap a row for **Transaction** detail. You can change the **category** and how it was **paid with** (card or bank transfer). Pick **Custom…** to type a category of your own. **Save** turns on once something changed, and keeps it so later Syncs don’t overwrite it. **Technical details** holds the bank's raw fields, for reporting a problem. Turn on **learn** to apply the same category to future charges from that merchant.
 
-**Recurring** on that screen: **Auto-detect**, **Yearly**, **Monthly**, **Weekly**, or **Not recurring**. Use **Monthly** or **Yearly** for bills whose amount changes, like phone and electric — the Recurring tab groups that merchant even when the dollar amount is different each time.
+**Recurring** on that screen: **Auto-detect**, **Yearly**, **Monthly**, **Weekly**, or **Not recurring**. Use **Monthly** or **Yearly** for bills whose amount changes, like phone and electric — the Upcoming tab groups that merchant even when the dollar amount is different each time.
 
 **Credit Card Payment** (shown as “Bill pay”) is a payment to a card, not a purchase. It stays in the list but is **not** in Total Spend, charts, or widgets. It also shows under Accounts → Total paid. Checking ACH and the card’s “Thank You” are the **same** payment — Total paid counts it once even if the bank posts them a day or two apart. Some banks post a card payment as just **PAYMENT** or **ACH PMT**. When one of your linked cards received that exact amount within a few days, Sync files the bank line as the card payment. To undo one, open it and set the category yourself.
 
 A charge still **Pending** after ten days shows **may have dropped**: the bank usually posts or releases a hold within a few days, so it likely won't post.
 
-**Loan** / **Installment** also stay in the list but are **not** Total Spend or Total Income. **Refund** rows aren’t income, and they reduce **Total Spend** in the month they post. Budget categories and charts show what you spent before refunds. Card statement credits (travel credit, merchant returns) and My Loan deposits to checking are not paychecks. Issuer **installment** billing (My Chase Plan, Amex Plan It) is the billing of a purchase already in the list — use **Pay over time…** if you want them on Recurring.
+**Loan** / **Installment** also stay in the list but are **not** Total Spend or Total Income. **Refund** rows aren’t income, and they reduce **Total Spend** in the month they post. Budget categories and charts show what you spent before refunds. Card statement credits (travel credit, merchant returns) and My Loan deposits to checking are not paychecks. Issuer **installment** billing (My Chase Plan, Amex Plan It) is the billing of a purchase already in the list — use **Pay over time…** if you want them on Upcoming.
 
 ## Accounts
 
@@ -73,7 +73,7 @@ On a **credit card**:
 | **Loans & installments** | Open the **loan charge** or **installment** row. Enter remaining, remaining months, and the **statement payment**. **My Loan** also uses the **fixed APR** from the loan email (interest this statement = remaining × APR ÷ 12). **Pay Over Time** fee is payment minus remaining ÷ months. That payment is **already in the card minimum**. Chase: do not pay “Statement balance” or you pay the whole loan off at once; “Interest saving balance” includes the monthly loan payment. |
 | **Pay off by date** | A plan to clear a promo (0% APR) or extra balance by a date you choose. Accounts → card → **Add a pay-off plan**. Extra principal you intend to send with the statement payment. |
 
-**Record this month’s payment** reduces remaining in the app. **Mark paid off** and **Delete plan** each ask first. These show on **Recurring** on the card’s due date.
+**Record this month’s payment** reduces remaining in the app. **Mark paid off** and **Delete plan** each ask first. These show on **Upcoming** on the card’s due date.
 
 Open a card from Accounts to see **all** activity grouped by **statement** (close day from the bank). The Accounts week/month filter does not apply on that screen.
 
@@ -85,7 +85,7 @@ Ask can also **make a budget** and **plan a card payoff**. Ask "help me make a b
 
 Ask can **change categories** too. Tell it what something is, like "Corner Cafe is dining, not shopping", "put Example Gym under health", or "the 177.09 payment is my phone bill". It finds the charges, says exactly what will change, and waits for **Apply**; nothing is written before that, and **Cancel** or a typed "no" drops it. Applying also files later charges from that merchant the same way. For a bank line that names nobody, like PAYMENT, it remembers only that exact amount, since the same line can be several different bills. When recent payments have no name and no real category, Ask offers **Help me label my unnamed payments**: it asks what each one was, you answer in your own words or say skip, and it files them one at a time. A category you name outright is the one it uses.
 
-Ask can set up the **Budget** tab. After it builds a budget, tap **Use this budget** to turn it into category limits; each limit covers the budgeted spending plus the bills in that category, and it replaces the limits you had. Or set one limit at a time: "set my dining budget to 200", "cap shopping at $150". It also keeps **Recurring** straight: "I cancelled Example Stream" moves it to Ended and takes it out of your bills and budget, "Example Power is a monthly bill" adds it even when the amount changes, and "Example Shop is not a subscription" removes it. Marking something cancelled only updates the app. Like category changes, each of these waits for **Apply**. The conversation is saved on this device. Simulator cannot run the model; use a real iPhone or **My Mac (Designed for iPhone)**.
+Ask can set up the **Budget** tab. After it builds a budget, tap **Use this budget** to turn it into category limits; each limit covers the budgeted spending plus the bills in that category, and it replaces the limits you had. Or set one limit at a time: "set my dining budget to 200", "cap shopping at $150". It also keeps **Upcoming** straight: "I cancelled Example Stream" moves it to Ended and takes it out of your bills and budget, "Example Power is a monthly bill" adds it even when the amount changes, and "Example Shop is not a subscription" removes it. Marking something cancelled only updates the app. Like category changes, each of these waits for **Apply**. The conversation is saved on this device. Simulator cannot run the model; use a real iPhone or **My Mac (Designed for iPhone)**.
 
 **Why?** Open Total Spend for **Why this total?**, tap a category for why it changed, or open a charge for **Why this charge?** The app works out what changed itself, so these still work without Apple Intelligence, which only adds a short summary on top.
 
@@ -99,9 +99,13 @@ Cash back and rewards count as income, under **Rewards**. Check, cash, and ATM d
 
 Transaction detail: **Suggest with Apple Intelligence** picks a category from the app’s list.
 
-## Recurring
+## Upcoming
 
-Detected subscriptions and repeating bills. Fixed-price subs need the same merchant and amount on a schedule. Phone, electric, and similar bills can **vary** — mark one charge **Monthly** or **Yearly** on Transaction detail, or the app may pick them up when the cadence is regular. A **month grid** at the top marks the days bills are due, a year ahead; tap a day to list those charges under the calendar, and **Clear** to go back. **Active** vs **Ended**. Shows next charge and estimated monthly total (`~` when the amount changes).
+What's coming due: card payments, plus detected subscriptions and repeating bills.
+
+**Cards due** lists each card with a payment coming, soonest first, with its minimum (or the balance when the bank doesn't report a minimum). Tap one to open the card. A due date that passed without the bank marking the card overdue is left off until the next Sync brings the new date. **Summary** shows the card minimums due beside what extra bills cost a month.
+
+Fixed-price subs need the same merchant and amount on a schedule. Phone, electric, and similar bills can **vary** — mark one charge **Monthly** or **Yearly** on Transaction detail, or the app may pick them up when the cadence is regular. A **month grid** marks card due dates in orange and bills in gray, a year ahead; tap a day to list what's due then, and **Clear** to go back. **Active** vs **Ended**. Shows next charge and estimated monthly total (`~` when the amount changes).
 
 Tap a bill for its amount, schedule, and charges. **It's cancelled** moves it to **Ended**; **Not a recurring bill** takes it off this tab. Both ask first and apply to every charge from that merchant. An ended bill you marked cancelled has **Mark active again**.
 
@@ -124,4 +128,10 @@ A **monthly cap**, **expected income**, and **per-category limits** compared to 
 
 ## Larger screens
 
-On iPhone Duo's inner screen and other wide windows, Transactions shows Total Spend, Total Income and Net side by side, and Recurring puts the calendar beside the bills. In a window wide enough for two columns, like iPad or Mac, Transactions, Accounts and Settings show the list on the left and what you open on the right.
+With iPhone Duo unfolded and turned sideways (and on iPad or Mac), the app uses two columns:
+
+- **Transactions** and **Accounts** show the list on the left and what you open on the right. Transactions starts with the category chart there.
+- **Upcoming** puts the calendar and the day you pick on the left, and the summary, cards due, and bills on the right.
+- **Settings** looks like the Settings app: a list of pages with colored icons on the left, the page on the right.
+
+Unfolded and held upright, the app stays one column, with Transactions' totals side by side.

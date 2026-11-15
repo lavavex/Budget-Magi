@@ -54,7 +54,7 @@ struct CardsView: View {
     }
 
     var body: some View {
-        AdaptiveNavigation {
+        AdaptiveNavigation(placeholder: "Pick an account to see its activity.", systemImage: "building.columns") {
             List {
                 // MARK: Overview
                 Section {

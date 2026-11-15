@@ -242,11 +242,11 @@ enum AskEdit {
         let summary: String
         switch marker {
         case "cancelled":
-            summary = "Mark \(title) as cancelled? It moves to Ended on the Recurring tab and stops counting as a bill. This only updates the app, and doesn't cancel anything with \(title)."
+            summary = "Mark \(title) as cancelled? It moves to Ended on the Upcoming tab and stops counting as a bill. This only updates the app, and doesn't cancel anything with \(title)."
         case "none":
-            summary = "Stop treating \(title) as a recurring charge? It comes off the Recurring tab."
+            summary = "Stop treating \(title) as a recurring charge? It comes off the Upcoming tab."
         default:
-            summary = "Treat \(title) as a \(marker) bill? It shows on the Recurring tab even when the amount changes."
+            summary = "Treat \(title) as a \(marker) bill? It shows on the Upcoming tab even when the amount changes."
         }
         return AskEditProposal(
             summary: summary,

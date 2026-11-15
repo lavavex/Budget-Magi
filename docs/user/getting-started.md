@@ -30,7 +30,7 @@ Beta updates install through TestFlight. Feedback (screenshots, notes) can be se
 
 1. You’ll see a short **splash** (app icon), then **Welcome**.
 2. Read the three points, tap **Get Started**.
-3. The tab bar appears: **Transactions**, **Accounts**, **Budget**, **Recurring**, **Settings**.
+3. The tab bar appears: **Transactions**, **Accounts**, **Budget**, **Upcoming**, **Settings**.
 
 Later launches skip Welcome and go straight to the tabs.
 
@@ -65,7 +65,7 @@ If Link asks you to sign in again later, **Settings** → swipe the bank → **R
 | **Transactions** | Spend and income for a week/month, search, categories, **Sync** |
 | **Accounts** | Cards, checking/savings, utilization, bills due |
 | **Budget** | Monthly cap and category limits vs real spend |
-| **Recurring** | Detected subscriptions, repeating bills, and card payoff plans (My Loan, Pay Over Time, promo APR) |
+| **Upcoming** | Card payments coming due, detected subscriptions, repeating bills, and card payoff plans (My Loan, Pay Over Time, promo APR) |
 | **Settings** | Plaid keys, linked banks, backup, privacy |
 
 More detail: [Using the app](using-the-app.md).

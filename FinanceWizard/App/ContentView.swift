@@ -39,7 +39,9 @@ struct ContentView: View {
     /// Transactions, unless a Debug build was launched with `-screen <tab>`.
     private static var launchTab: AppTab {
         #if DEBUG
-        if let tab = DemoMode.launchScreen.flatMap(AppTab.init(rawValue:)) {
+        // "upcoming" names the tab as it reads now; "subscriptions" still works.
+        let screen = DemoMode.launchScreen == "upcoming" ? AppTab.subscriptions.rawValue : DemoMode.launchScreen
+        if let tab = screen.flatMap(AppTab.init(rawValue:)) {
             return tab
         }
         #endif
@@ -79,7 +81,7 @@ struct ContentView: View {
             lazyTab(.subscriptions) {
                 SubscriptionsView()
             }
-            .tabItem { Label("Recurring", systemImage: "repeat.circle") }
+            .tabItem { Label("Upcoming", systemImage: "calendar.badge.clock") }
             .tag(AppTab.subscriptions)
 
             lazyTab(.settings) {
@@ -554,6 +556,9 @@ struct AllTransactionsView: View {
                     }
                 }
             }
+        } detail: {
+            // Beside the list, the category chart fills the space until a row is opened.
+            CategorySpendView(period: period, referenceDate: referenceDate)
         }
     }
 

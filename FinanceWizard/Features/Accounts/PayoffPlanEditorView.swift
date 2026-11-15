@@ -341,7 +341,7 @@ struct PayoffPlanEditorView: View {
         .confirmationDialog("Delete this plan?", isPresented: $confirmDelete, titleVisibility: .visible) {
             Button("Delete plan", role: .destructive) { deletePlan() }
         } message: {
-            Text("Its payments stop counting on Recurring and the card. Charges already synced aren't affected.")
+            Text("Its payments stop counting on Upcoming and the card. Charges already synced aren't affected.")
         }
         .confirmationDialog("Mark this plan paid off?", isPresented: $confirmPaidOff, titleVisibility: .visible) {
             Button("Mark paid off") { markPaidOff() }

@@ -7,6 +7,8 @@ title: Settings
 
 Plaid keys and banks are required to pull transactions. See [Getting started](getting-started.md) if you haven’t linked yet.
 
+On a narrow screen Settings is one list. With iPhone Duo unfolded sideways, iPad, or Mac, it looks like the Settings app: the app and its version at the top, then pages with colored icons (Linked banks, Apple Card, Plaid account, Privacy, Backup & restore, On-device AI, About, Erase all data), and the page you pick on the right.
+
 ## Plaid account
 
 | Field | What to enter |

@@ -2,8 +2,8 @@
 //  SubscriptionsView.swift
 //  Finance Wizard
 //
-//  Recurring charges tab: detect subscriptions and variable bills,
-//  mark Not Recurring vs Cancelled.
+//  Upcoming tab: card payments coming due, detected subscriptions and variable bills,
+//  and marking a bill not recurring or cancelled.
 //
 
 import SwiftUI
@@ -108,19 +108,71 @@ struct SubscriptionsView: View {
             }
         }
     }
-    /// Calendar beside the bills when the window is wide, like the Duo's inner screen.
+    // MARK: Card payments
+
+    /// Cards with a payment coming, soonest first. A date that passed without the bank marking
+    /// the card overdue is old data rather than a bill, as on Accounts.
+    private var cardsDue: [BankAccount] {
+        accounts
+            .filter { $0.isCredit && $0.nextPaymentDueDate != nil && ($0.isOverdue == true || !$0.dueDateIsStale) }
+            .sorted { ($0.nextPaymentDueDate ?? .distantFuture) < ($1.nextPaymentDueDate ?? .distantFuture) }
+    }
+
+    private var cardMinimumsDue: Double {
+        cardsDue.compactMap(\.minimumPaymentAmount).reduce(0, +)
+    }
+
+    private var cardDueDays: Set<DateComponents> {
+        Set(cardsDue.compactMap(\.nextPaymentDueDate).map { Calendar.current.dateComponents([.year, .month, .day], from: $0) })
+    }
+
+    private var cardsDueOnSelectedDay: [BankAccount] {
+        guard let selectedDay else { return [] }
+        return cardsDue.filter { account in
+            guard let due = account.nextPaymentDueDate else { return false }
+            let parts = Calendar.current.dateComponents([.year, .month, .day], from: due)
+            return parts.year == selectedDay.year && parts.month == selectedDay.month && parts.day == selectedDay.day
+        }
+    }
+
+    private func cardDueLink(_ account: BankAccount) -> some View {
+        NavigationLink {
+            CardDetailView(
+                displayName: account.displayName,
+                rawPaymentMethod: account.plaidDisplayName,
+                matchingPaymentMethods: account.matchingPaymentMethods(in: Set(transactions.map(TransactionAnalytics.cardName(for:)))),
+                creditAccount: account,
+                bankAccount: account
+            )
+        } label: {
+            UpcomingBillRow(
+                account: account,
+                installmentIncluded: PayoffPlanProgress.installmentIncludedInMin(on: account, plans: Array(payoffPlans)),
+                interestSavingBalance: PayoffPlanProgress.interestSavingBalance(on: account, plans: Array(payoffPlans))
+            )
+        }
+    }
+
+    // MARK: Layout
+
     @Environment(\.appWidth) private var appWidth
 
-    private var calendarBesideBills: Bool { appWidth >= LayoutWidth.roomy }
+    /// Two equal columns, calendar on the left and the lists on the right, when the window is
+    /// wide enough for both, like the Duo's inner screen turned sideways.
+    private var twoColumns: Bool { appWidth >= LayoutWidth.twoColumn }
 
     var body: some View {
         NavigationStack(path: $path) {
             Group {
-                if calendarBesideBills {
-                    HStack(spacing: 0) {
+                if twoColumns {
+                    // Each list keeps its outer margin; the inner ones meet in a gap of the same size.
+                    HStack(alignment: .top, spacing: 0) {
                         List { calendarSections }
-                            .frame(width: 380)
+                            .contentMargins(.trailing, 10, for: .scrollContent)
+                            .frame(maxWidth: .infinity)
                         List { billSections }
+                            .contentMargins(.leading, 10, for: .scrollContent)
+                            .frame(maxWidth: .infinity)
                     }
                 } else {
                     List {
@@ -129,7 +181,7 @@ struct SubscriptionsView: View {
                     }
                 }
             }
-            .navigationTitle("Recurring")
+            .navigationTitle("Upcoming")
             .navigationDestination(for: String.self) { id in
                 if let item = candidates.first(where: { $0.id == id }) {
                     recurringDetail(item, showCancelledButton: true)
@@ -152,21 +204,35 @@ struct SubscriptionsView: View {
 
     @ViewBuilder
     private var calendarSections: some View {
-        Section {
-            RecurringCalendarView(chargeDays: chargeDays, selectedDay: $selectedDay)
-                .frame(minHeight: 240)
-                .listRowInsets(EdgeInsets())
-                .listRowBackground(Color.clear)
-                .padding(.vertical, -16)
-                // Beside the bills, keep the month arrows off the other column's edge.
-                .padding(.horizontal, calendarBesideBills ? 12 : 0)
+        if twoColumns {
+            // In a card like the column beside it, so both start on the same line.
+            Section {
+                calendar
+                    .listRowInsets(EdgeInsets(top: 4, leading: 8, bottom: 4, trailing: 8))
+            } header: {
+                Text("Calendar")
+            } footer: {
+                calendarKey
+            }
+        } else {
+            Section {
+                calendar
+                    .listRowInsets(EdgeInsets())
+                    .listRowBackground(Color.clear)
+                    .padding(.vertical, -16)
+            } footer: {
+                calendarKey
+            }
         }
         if let selectedDay {
             Section {
-                if chargesOnSelectedDay.isEmpty && payoffOnSelectedDay.isEmpty {
-                    Text("No recurring charges on this day.")
+                if chargesOnSelectedDay.isEmpty && payoffOnSelectedDay.isEmpty && cardsDueOnSelectedDay.isEmpty {
+                    Text("Nothing due on this day.")
                         .foregroundStyle(.secondary)
                 } else {
+                    ForEach(cardsDueOnSelectedDay, id: \.accountId) { account in
+                        cardDueLink(account)
+                    }
                     ForEach(payoffOnSelectedDay, id: \.planId) { plan in
                         NavigationLink {
                             PayoffPlanEditorView(existing: plan)
@@ -192,32 +258,65 @@ struct SubscriptionsView: View {
         }
     }
 
+    private var calendar: some View {
+        RecurringCalendarView(chargeDays: chargeDays, cardDueDays: cardDueDays, selectedDay: $selectedDay)
+            .frame(minHeight: 240)
+    }
+
+    private var calendarKey: some View {
+        HStack(spacing: 14) {
+            Label("Card payment", systemImage: "circle.fill")
+                .labelStyle(DotLabelStyle(color: .orange))
+            Label("Bill", systemImage: "circle.fill")
+                .labelStyle(DotLabelStyle(color: .secondary))
+        }
+        .font(.caption)
+    }
+
     @ViewBuilder
     private var billSections: some View {
         Section {
-            HStack {
+            HStack(alignment: .top) {
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("Extra bills")
+                    Text("Card minimums")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    MoneyText(cardMinimumsDue)
+                        .font(.title2.weight(.bold))
+                    Text(cardsDue.count == 1 ? "1 card due" : "\(cardsDue.count) cards due")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                VStack(alignment: .trailing, spacing: 2) {
+                    Text("Extra bills a month")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                     MoneyText(extraMonthly)
                         .font(.title2.weight(.bold))
-                }
-                Spacer()
-                VStack(alignment: .trailing, spacing: 2) {
                     Text(monthlySummaryLabel)
-                        .font(.subheadline)
+                        .font(.caption2)
                         .foregroundStyle(.secondary)
-                    if onCardMonthly > 0.005 {
-                        Text("+\(onCardMonthly.formatted(.currency(code: "USD"))) on cards")
-                            .font(.caption2)
-                            .foregroundStyle(.tertiary)
-                    }
                 }
+                .frame(maxWidth: .infinity, alignment: .trailing)
             }
             .padding(.vertical, 4)
+        } header: {
+            Text("Summary")
         } footer: {
-            Text("Extra bills are subscriptions and other charges besides the card payment. Loans and installments are already in the card minimum.")
+            Text(onCardMonthly > 0.005
+                 ? "Extra bills are subscriptions and other charges besides card payments. \(onCardMonthly.formatted(.currency(code: "USD"))) a month of loans and installments is already in the card minimums."
+                 : "Extra bills are subscriptions and other charges besides card payments.")
+        }
+
+        if !cardsDue.isEmpty {
+            Section {
+                ForEach(cardsDue, id: \.accountId) { account in
+                    cardDueLink(account)
+                }
+            } header: {
+                Text("Cards due")
+            }
         }
 
         if !issuerPlans.isEmpty {
@@ -531,7 +630,7 @@ struct SubscriptionsView: View {
         workFinished = false
         workTitle = switch value {
         case "cancelled": "Marking \(item.displayVendor) cancelled…"
-        case "none": "Removing \(item.displayVendor) from Recurring…"
+        case "none": "Removing \(item.displayVendor) from Upcoming…"
         default: "Marking \(item.displayVendor) active…"
         }
         isSpinning = true
@@ -566,4 +665,16 @@ struct SubscriptionsView: View {
 
 #Preview {
     SubscriptionsView()
+}
+
+/// A colored dot and its caption, for the calendar's key.
+private struct DotLabelStyle: LabelStyle {
+    let color: Color
+
+    func makeBody(configuration: Configuration) -> some View {
+        HStack(spacing: 5) {
+            Circle().fill(color).frame(width: 7, height: 7)
+            configuration.title
+        }
+    }
 }

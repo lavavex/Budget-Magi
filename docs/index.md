@@ -14,7 +14,7 @@ For people installing from **TestFlight** (public beta soon).
 | Page | What it covers |
 |------|----------------|
 | [Getting started](user/getting-started.md) | TestFlight, Welcome, Plaid keys, first Sync |
-| [Using the app](user/using-the-app.md) | Tabs: Transactions, Accounts, Budget, Recurring |
+| [Using the app](user/using-the-app.md) | Tabs: Transactions, Accounts, Budget, Upcoming |
 | [Settings](user/settings.md) | Keys, banks, privacy, backup |
 | [Widgets](user/widgets.md) | Total Spend, Category, Balances |
 | [Help](user/help.md) | Link, Sync, empty list, Relink |

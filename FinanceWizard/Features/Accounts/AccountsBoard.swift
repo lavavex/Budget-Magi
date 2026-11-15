@@ -278,7 +278,7 @@ struct UpcomingBillRow: View {
             VStack(alignment: .leading, spacing: 2) {
                 CardText(account.displayName)
                     .font(.body.weight(.semibold))
-                    .lineLimit(1)
+                    .lineLimit(2)
                 if let util = account.utilization {
                     Text("\(Int((util * 100).rounded()))% utilization")
                         .font(.caption2)
@@ -288,16 +288,19 @@ struct UpcomingBillRow: View {
             Spacer(minLength: 8)
             VStack(alignment: .trailing, spacing: 2) {
                 // Prefer minimum payment; fall back to full balance.
+                // Amounts never wrap; the name truncates instead.
                 if let min = account.minimumPaymentAmount {
                     MoneyText(min)
                         .font(.body.weight(.semibold))
                         .foregroundStyle(urgencyColor)
+                        .fixedSize()
                 } else {
                     // No minimum from the bank, so this is the balance, not what's due.
                     MoneyText(max(0, account.currentBalance))
                         .font(.body.weight(.semibold))
                         .foregroundStyle(urgencyColor)
-                    Text("Balance · no minimum shown")
+                        .fixedSize()
+                    Text("Balance")
                         .font(.caption2)
                         .foregroundStyle(.secondary)
                 }

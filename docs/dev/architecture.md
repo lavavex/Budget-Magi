@@ -32,7 +32,7 @@ FinanceWizard/                 Main app (SwiftUI + Plaid client)
   App/                         @main, splash, RootWithSplash → OnboardingGate
   Features/
     Onboarding/                Welcome, gate, completed-flag store
-    Transactions/              List tools, detail, period filter, review, Recurring
+    Transactions/              List tools, detail, period filter, review, Upcoming
     Accounts/                  Accounts hub, card detail, payoff plans, accounts board model
     Budget/                    Monthly budget UI
     Settings/                  Settings, backup, debug export, Debug menu
@@ -132,14 +132,14 @@ RootWithSplash
             ├── Transactions  (AllTransactionsView)
             ├── Accounts      (CardsView → CardDetailView)
             ├── Budget        (BudgetView)
-            ├── Recurring     (SubscriptionsView)
+            ├── Upcoming      (SubscriptionsView)
             └── Settings      (SettingsView → DebugMenuView)
 ```
 
 See [How it works](how-it-works.md) for the file-level map. See [Onboarding](onboarding.md).
 
 
-**Layout by width.** `App/AdaptiveLayout.swift` publishes the window's width as `appWidth` from `ContentView`. Size class can't separate the iPhone Duo's cover (466 pt), its inner screen (669 pt, 951 pt sideways) and an iPad, since all report regular width. At `LayoutWidth.roomy` (600 pt) Transactions puts its totals side by side and Recurring puts the calendar beside the bills; at `LayoutWidth.twoColumn` (900 pt) `AdaptiveNavigation` swaps a tab's `NavigationStack` for a `NavigationSplitView`, so links open in the detail column. Card nicknames are also kept under `card:<bank>|<last four>` in `CardLabelStore`, because relinking a bank gives every account a new id.
+**Layout by width.** `App/AdaptiveLayout.swift` publishes the window's width as `appWidth` from `ContentView`. Size class can't separate the iPhone Duo's cover (466 pt), its inner screen, and an iPad, since all report regular width; beside the side tab bar the inner screen gives the app 867 pt sideways. At `LayoutWidth.roomy` (600 pt) Transactions puts its totals side by side. At `LayoutWidth.twoColumn` (800 pt) `AdaptiveNavigation` swaps a tab's `NavigationStack` for a `NavigationSplitView`, so links open in the detail column; its sidebar takes `containerBackground` so cards stay light on gray, and `UIColor.baseGroupedBackground` paints the detail placeholder, because the detail column is an elevated surface where `systemGroupedBackground` turns white. Upcoming instead splits into two equal lists, and Settings builds its own split (`SettingsPage` rows with icon tiles, each page a `Form` of the same sections the one-column form uses). Card nicknames are also kept under `card:<bank>|<last four>` in `CardLabelStore`, because relinking a bank gives every account a new id.
 ## Persistence
 
 | Concern | Technology |

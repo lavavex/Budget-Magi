@@ -26,7 +26,7 @@ Use the TestFlight build to try new features and report bugs before a public App
 - **Transactions** — every charge and paycheck in one list. Fix categories. Sync when you want.
 - **Accounts** — cards, checking, and savings: balances, utilization, bills coming due.
 - **Budget** — a monthly cap and category limits against real spend.
-- **Recurring** — subscriptions and repeating bills, with next-charge dates.
+- **Upcoming** — card payments coming due, subscriptions and repeating bills, on a calendar.
 - **Ask** — on-device AI that looks up your numbers, builds a budget or a card payoff plan, and fixes categories when you tell it what a charge is. It runs on Apple Intelligence, so your questions and data stay on the phone.
 - **Widgets** — Total Spend, spend by category, and cash balances on the Home Screen.
 

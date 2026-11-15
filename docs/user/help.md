@@ -53,7 +53,7 @@ Some banks need extra Plaid / redirect setup. Sandbox test banks usually don’t
 
 Sync in the app first, then add the widget. If it stays empty, delete it and add it again. More: [Widgets](widgets.md).
 
-## Recurring
+## Upcoming
 
 ### My Chase Loan: what to enter
 
@@ -73,7 +73,7 @@ They are different things:
 
 Loan/installment **remaining** drops when a new statement posts (after Sync). Pay-off-by-date plans have **Record this month’s payment** if you want to tick extra principal by hand.
 
-If a My Loan plan is on the wrong type, open it on Recurring, set **Type** to **My Loan**, and enter the APR from the loan email. A flat **Pay Over Time** fee model will not split principal and interest the same way.
+If a My Loan plan is on the wrong type, open it on Upcoming, set **Type** to **My Loan**, and enter the APR from the loan email. A flat **Pay Over Time** fee model will not split principal and interest the same way.
 
 ### Total paid looks twice as high as I actually sent
 
@@ -99,9 +99,9 @@ Words like **autopay** in a merchant description (VERIZON \*AUTOPAY, T‑MOBILE 
 
 Statement periods clamp to the length of each month, so February closes on the 28th (29th in a leap year).
 
-### Phone or electric bill doesn’t show on Recurring
+### Phone or electric bill doesn’t show on Upcoming
 
-Auto-detect looks for the **same amount** on a schedule, so a bill that changes each month may be missing. Open one of those charges → **Recurring** → **Monthly** (or **Yearly**) → **Save**. The Recurring tab groups that merchant even when the amount varies. **Not recurring** on a single charge hides only that row; **Not a recurring bill** on the Recurring tab hides the whole vendor.
+Auto-detect looks for the **same amount** on a schedule, so a bill that changes each month may be missing. Open one of those charges → **Recurring** → **Monthly** (or **Yearly**) → **Save**. The Upcoming tab groups that merchant even when the amount varies. **Not recurring** on a single charge hides only that row; **Not a recurring bill** on the Upcoming tab hides the whole vendor.
 
 ## Total Income looks too high
 
