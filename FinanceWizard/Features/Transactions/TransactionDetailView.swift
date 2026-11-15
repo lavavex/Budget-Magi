@@ -583,7 +583,7 @@ struct TransactionDetailView: View {
     /// Apply the changed fields to other transactions with the same title + card.
     /// FIX: this used to write category, lock and cadence on every sibling regardless of what
     /// actually changed — and `subscriptionMode.storageValue` is nil for `.auto`, so it erased
-    /// the "not recurring" markers written from the Recurring tab and the vendor reappeared.
+    /// the "not recurring" markers written from the Upcoming tab and the vendor reappeared.
     @discardableResult
     private func applyLocalMatching(
         category: String,

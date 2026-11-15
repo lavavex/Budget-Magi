@@ -118,8 +118,10 @@ final class BankAccount {
                 parts.append("···\(mask)")
             }
         }
-        // If user renamed (e.g. product + last 4), also show original Plaid account name
-        if customLabel != defaultDisplayName {
+        // A real rename also shows the bank's name for the account, unless the nickname is
+        // that same name with the last four written differently ("Card 1002" for "Card ···1002").
+        func letters(_ text: String) -> String { text.lowercased().filter { $0.isLetter || $0.isNumber } }
+        if customLabel != defaultDisplayName, letters(customLabel) != letters(plaidDisplayName) {
             parts.insert(plaidDisplayName, at: 0)
         }
         return parts.joined(separator: " · ")
@@ -246,10 +248,11 @@ final class BankAccount {
 
     /// Whether a transaction payment_method string belongs to this account (mask / exact).
     func matchesPaymentMethod(_ method: String) -> Bool {
-        let m = method.trimmingCharacters(in: .whitespacesAndNewlines)
-        let plaid = plaidDisplayName.trimmingCharacters(in: .whitespacesAndNewlines)
+        // Wallet names Apple Card with a non-breaking space, which older rows don't have.
+        let m = method.plainSpaces
+        let plaid = plaidDisplayName.plainSpaces
         if m.caseInsensitiveCompare(plaid) == .orderedSame { return true }
-        if m.caseInsensitiveCompare(name) == .orderedSame { return true }
+        if m.caseInsensitiveCompare(name.plainSpaces) == .orderedSame { return true }
         // FIX: a bare substring search on a 4-digit mask matched any longer number that
         // happened to contain it (mask "1234" matched "…12340"). Require the mask to stand
         // alone as a last-four group.
@@ -301,5 +304,15 @@ final class BankAccount {
         if credit.count == 1 { return credit.first }
         // Still ambiguous — no match is better than the wrong card.
         return nil
+    }
+}
+
+extension String {
+    /// Non-breaking and other unusual spaces as plain ones, trimmed. Names from different
+    /// sources (Wallet, a CSV, Plaid) otherwise look identical but don't compare equal.
+    var plainSpaces: String {
+        let spaces: Set<Character> = ["\u{00A0}", "\u{2007}", "\u{202F}", "\u{2009}"]
+        return String(map { spaces.contains($0) ? " " : $0 })
+            .trimmingCharacters(in: .whitespacesAndNewlines)
     }
 }

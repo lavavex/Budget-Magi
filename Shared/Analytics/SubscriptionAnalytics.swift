@@ -305,13 +305,33 @@ enum SubscriptionAnalytics {
     /// Vendors the user marked cancelled. Detection still finds their old charges, so anything
     /// that totals bills leaves these out.
     static func cancelledVendors(in transactions: [Transaction]) -> Set<String> {
-        Set(transactions.compactMap { row in
-            (row.subscriptionCadenceOverride ?? "").lowercased() == "cancelled" ? normalizeVendor(row.title) : nil
-        })
+        cancellations(in: transactions).cancelled
     }
 
-    /// Past its usual date by about half a cycle, so it may have ended or moved to another
-    /// account. Still listed until `isActive` gives up on it.
+    /// Marked cancelled, and whether the bill has charged again since. A newer charge only
+    /// counts when it's near an amount that was marked, so a $3.99 purchase from a store whose
+    /// $11.99 plan was cancelled doesn't bring the plan back.
+    static func cancellations(in transactions: [Transaction]) -> (cancelled: Set<String>, chargedAgain: Set<String>) {
+        var marked: [String: (through: Date, amounts: [Double])] = [:]
+        for row in transactions where (row.subscriptionCadenceOverride ?? "").lowercased() == "cancelled" {
+            let vendor = normalizeVendor(row.title)
+            var entry = marked[vendor] ?? (.distantPast, [])
+            entry.through = max(entry.through, row.date)
+            entry.amounts.append(abs(row.amount))
+            marked[vendor] = entry
+        }
+        var chargedAgain = Set<String>()
+        for row in transactions where row.amount < 0 && row.subscriptionCadenceOverride == nil {
+            let vendor = normalizeVendor(row.title)
+            guard let entry = marked[vendor], row.date > entry.through else { continue }
+            let amount = abs(row.amount)
+            if entry.amounts.contains(where: { abs($0 - amount) <= max(1, $0 * 0.1) }) {
+                chargedAgain.insert(vendor)
+            }
+        }
+        return (Set(marked.keys).subtracting(chargedAgain), chargedAgain)
+    }
+
     /// When a bill should charge next: one cadence after its last charge.
     nonisolated static func nextChargeDate(for candidate: SubscriptionCandidate, calendar: Calendar = .current) -> Date? {
         switch candidate.cadence {
@@ -321,6 +341,8 @@ enum SubscriptionAnalytics {
         }
     }
 
+    /// Past its usual date by about half a cycle, so it may have ended or moved to another
+    /// account. Still listed until `isActive` gives up on it.
     nonisolated static func isOverdue(_ candidate: SubscriptionCandidate, now: Date = Date()) -> Bool {
         let days: Int = {
             switch candidate.cadence {

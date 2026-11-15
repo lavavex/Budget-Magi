@@ -107,7 +107,7 @@ struct SettingsView: View {
                         statusIsError = false
                         switch request.mode {
                         case .new:
-                            statusMessage = "Linked \(item.institutionName). Tap Sync on Transactions."
+                            statusMessage = "Linked \(item.institutionName). Sync on Home to bring in its transactions."
                             Task { await reconcileAfterRelink(item) }
                         case .update:
                             statusMessage = "Relinked \(item.institutionName). Refreshing accounts…"

@@ -319,7 +319,8 @@ struct SpendingQueryTool: Tool {
             // For "last month" the model often ends the range at this month, which adds a
             // month nobody asked about. A question with no range wording gets one month.
             let wantsRange = asked.map { AskLedger.asksForSeveralMonths($0.question) } ?? true
-            let range = AskLedger.monthRange(from: arguments.fromMonth, to: wantsRange ? arguments.toMonth ?? "" : "")
+            let range = asked.flatMap { AskLedger.yearRange(in: $0.question) }
+                ?? AskLedger.monthRange(from: arguments.fromMonth, to: wantsRange ? arguments.toMonth ?? "" : "")
             // The model sometimes drops the category and reports the month's whole total as, say,
             // dining. With no filter at all, use a category the question itself names.
             let merchant = arguments.merchant ?? ""
@@ -327,10 +328,14 @@ struct SpendingQueryTool: Tool {
             if merchant.isEmpty, category.isEmpty, let named = asked.flatMap({ AskLedger.categoryNamed(in: $0.question) }) {
                 category = named
             }
+            // A question about one card or account ("on my Apple Card") totals that account.
+            let accounts = (try? modelContext.fetch(FetchDescriptor<BankAccount>())) ?? []
+            let named = asked.map { AskLedger.accountsNamed(in: $0.question, among: accounts) } ?? []
             let result = AskLedger.spending(
                 merchant: merchant,
                 category: category,
                 range: range,
+                account: named.count == 1 ? named[0] : nil,
                 in: modelContext
             )
             return SpendingResult(

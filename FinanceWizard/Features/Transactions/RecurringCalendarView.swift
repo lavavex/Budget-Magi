@@ -2,7 +2,7 @@
 //  RecurringCalendarView.swift
 //  Finance Wizard
 //
-//  Native month calendar for the Recurring tab (system UICalendarView).
+//  Native month calendar for the Upcoming tab (system UICalendarView).
 //
 
 import SwiftUI

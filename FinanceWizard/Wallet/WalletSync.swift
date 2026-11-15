@@ -107,13 +107,13 @@ enum WalletSync {
             let credit = card.creditInformation
             let account = existingAccounts.first { $0.accountId == id } ?? {
                 let created = BankAccount(
-                    accountId: id, itemId: itemId, name: card.displayName, type: "credit",
+                    accountId: id, itemId: itemId, name: card.displayName.plainSpaces, type: "credit",
                     subtype: "credit card", institutionName: card.institutionName, currentBalance: owed ?? 0
                 )
                 modelContext.insert(created)
                 return created
             }()
-            account.name = card.displayName
+            account.name = card.displayName.plainSpaces
             account.institutionName = card.institutionName
             if let owed { account.currentBalance = owed }
             account.creditLimit = credit.creditLimit.map(amount)
@@ -125,7 +125,8 @@ enum WalletSync {
             report.lines.append("\(card.displayName): owes \(AskLedger.money(account.currentBalance))")
         }
 
-        let labels = Dictionary(cards.map { ($0.id, $0.displayName) }, uniquingKeysWith: { first, _ in first })
+        // Plain spaces: Wallet's "Apple\u{00A0}Card" would otherwise not match older Apple Card rows.
+        let labels = Dictionary(cards.map { ($0.id, $0.displayName.plainSpaces) }, uniquingKeysWith: { first, _ in first })
         let incoming = all.map { line -> WalletTransaction in
             let title = line.merchantName?.isEmpty == false ? line.merchantName! : line.transactionDescription
             return WalletTransaction(
@@ -149,6 +150,7 @@ enum WalletSync {
         report.lines.append("Apple Card: +\(counts.added) new / \(counts.updated) updated / \(counts.skipped) already imported")
 
         PlaidSyncEngine.pairVaguePaymentsWithCards(modelContext: modelContext)
+        DataRepair.runAll(modelContext: modelContext)
         try modelContext.save()
         WidgetCenter.shared.reloadAllTimelines()
         return report

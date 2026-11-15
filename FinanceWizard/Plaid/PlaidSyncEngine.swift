@@ -202,6 +202,7 @@ enum PlaidSyncEngine {
         nameIncomeByPayrollCode(modelContext: modelContext)
         relabelPayrollDeposits(modelContext: modelContext)
         report.pairedCardPayments = pairVaguePaymentsWithCards(modelContext: modelContext)
+        DataRepair.runAll(modelContext: modelContext)
         // Every Item synced without a failure, so a re-linked bank's rows are all back.
         if PlaidItemStore.needsIncomeDedupe, !report.itemLines.contains(where: { $0.hasSuffix(": failed") }) {
             dedupeIncome(modelContext: modelContext)

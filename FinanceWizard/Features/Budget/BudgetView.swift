@@ -38,6 +38,27 @@ struct BudgetView: View {
         period.filterLabel(referenceDate: referenceDate)
     }
 
+    struct RecentPaychecks {
+        let source: String
+        let average: Double
+        let count: Int
+    }
+
+    /// The latest employer's last few paychecks, so expected income can match real pay.
+    private var recentPaychecks: RecentPaychecks? {
+        let paychecks = incomeRows
+            .filter { $0.category == "Payroll" && !Income.looksLikeReferenceCode($0.source) }
+            .sorted { $0.date > $1.date }
+        guard let source = paychecks.first?.source else { return nil }
+        let recent = paychecks.filter { $0.source == source }.prefix(8)
+        guard recent.count >= 3 else { return nil }
+        return RecentPaychecks(
+            source: source,
+            average: (recent.reduce(0) { $0 + $1.amount } / Double(recent.count) * 100).rounded() / 100,
+            count: recent.count
+        )
+    }
+
     /// Aggregated spend/income vs limits for the current plan and period.
     /// nil while plan is still loading.
     private var snapshot: BudgetSnapshot? {
@@ -101,6 +122,7 @@ struct BudgetView: View {
             .sheet(isPresented: $showIncomeEditor) {
                 ExpectedIncomeEditorSheet(
                     stream: editingIncome,
+                    recentPaychecks: recentPaychecks,
                     onSave: { stream in
                         plan?.upsertExpectedIncome(stream)
                         try? modelContext.save()
@@ -202,7 +224,7 @@ struct BudgetView: View {
                             }
                             if snapshot.expectedIncome > 0.005 {
                                 HStack {
-                                    Text("Expected this period")
+                                    Text("Expected in \(referenceDate.formatted(.dateTime.month(.wide)))")
                                         .font(.caption)
                                         .foregroundStyle(.secondary)
                                     Spacer()
@@ -548,6 +570,8 @@ struct BudgetView: View {
 private struct ExpectedIncomeEditorSheet: View {
     // nil stream = create mode; non-nil = edit mode with existing values.
     let stream: ExpectedIncomeStream?
+    /// What the latest paychecks actually came to, offered as the amount.
+    let recentPaychecks: BudgetView.RecentPaychecks?
     let onSave: (ExpectedIncomeStream) -> Void
     let onDelete: (String) -> Void
     let onCancel: () -> Void
@@ -581,6 +605,17 @@ private struct ExpectedIncomeEditorSheet: View {
                             .keyboardType(.decimalPad)
                             .multilineTextAlignment(.trailing)
                             .frame(maxWidth: 140)
+                    }
+                } footer: {
+                    if let recent = recentPaychecks {
+                        HStack(alignment: .firstTextBaseline) {
+                            Text("Your last \(recent.count) paychecks from \(recent.source) averaged \(recent.average.formatted(.currency(code: "USD"))).")
+                            Spacer(minLength: 8)
+                            Button("Use") {
+                                amountText = recent.average.formatted(.number.precision(.fractionLength(2)).grouping(.never))
+                            }
+                            .font(.footnote.weight(.semibold))
+                        }
                     }
                 }
 

@@ -202,7 +202,7 @@ enum AskPlan {
             sections.append(.init(
                 title: "One-time deposits, not counted as monthly income",
                 lines: oneTime.sorted { $0.amount > $1.amount }.prefix(4).map {
-                    "\($0.source): \(dollars($0.amount)) on \(MoneyInsights.shortDay($0.date))"
+                    "\($0.displaySource): \(dollars($0.amount)) on \(MoneyInsights.shortDay($0.date))"
                 }
             ))
         }
