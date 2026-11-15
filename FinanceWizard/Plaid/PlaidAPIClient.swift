@@ -31,6 +31,19 @@ enum PlaidAPIError: LocalizedError {
         case .badURL:
             return "Invalid Plaid API URL."
         case .http(_, let code, let message):
+            // The common ones in plain words; Plaid's own text names API calls the user never made.
+            switch code?.uppercased() {
+            case "ITEM_NOT_FOUND":
+                return "This bank isn't connected on this iPhone anymore. Link it again in Settings, or unlink it there."
+            case "ITEM_LOGIN_REQUIRED", "PENDING_EXPIRATION":
+                return "The bank needs you to sign in again. Relink it in Settings."
+            case "INVALID_ACCESS_TOKEN":
+                return "This bank's connection belongs to different Plaid keys. Link it again in Settings."
+            case "RATE_LIMIT_EXCEEDED", "INSTITUTION_DOWN", "INSTITUTION_NOT_RESPONDING":
+                return "The bank isn't answering right now. Try Sync again later."
+            default:
+                break
+            }
             if let code, !code.isEmpty {
                 return "Plaid (\(code)): \(message)"
             }

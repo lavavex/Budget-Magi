@@ -83,7 +83,8 @@ struct OnboardingView: View {
                 }
                 .padding(.top, 48)
                 .padding(.horizontal, 40)
-                .frame(maxWidth: .infinity, alignment: .leading)
+                // Lines this long are hard to read on the Duo's inner screen or an iPad.
+                .frame(maxWidth: 560, alignment: .leading)
 
                 Spacer()
 
@@ -100,6 +101,7 @@ struct OnboardingView: View {
                 // often keeps a light label, which vanishes on the Dark fill. Canvas
                 // color contrasts both schemes; .colorInvert() only “fixes” one.
                 .foregroundStyle(Color(.systemBackground))
+                .frame(maxWidth: 480)
                 .padding(.horizontal, 40)
 
                 Button("Try with sample data") { sampleData.start() }

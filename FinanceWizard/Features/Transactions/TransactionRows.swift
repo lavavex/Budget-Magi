@@ -58,7 +58,7 @@ struct TransactionRowView: View {
                 .font(.caption)
                 .foregroundStyle(.secondary)
                 HStack(spacing: 4) {
-                    Text(transaction.displayDate, style: .date)
+                    Text(transaction.date, style: .date)
                     // isPending is optional Bool — compare to true, not truthy.
                     if transaction.isPending == true {
                         Text(isLongPending ? "· Pending · may have dropped" : "· Pending")
@@ -101,7 +101,7 @@ struct TransactionRowView: View {
     /// Banks post or drop a hold within a few days. One still pending after ten days most
     /// likely fell off and the bank never told Plaid.
     private var isLongPending: Bool {
-        transaction.displayDate < Date().addingTimeInterval(-10 * 24 * 60 * 60)
+        transaction.date < Date().addingTimeInterval(-10 * 24 * 60 * 60)
     }
 
     /// A nickname first, then the account's display name, so a card Plaid calls "CREDIT CARD"

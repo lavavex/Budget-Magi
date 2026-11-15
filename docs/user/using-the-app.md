@@ -50,7 +50,7 @@ A charge still **Pending** after ten days shows **may have dropped**: the bank u
 
 Credit cards plus checking and savings.
 
-Cards your bank names only "CREDIT CARD" show as the bank and last four (Chase ···4103) until you give them a name: open the card and set **Display name**.
+Cards your bank names only "CREDIT CARD" show as the bank and last four (Chase ···4103) until you give them a name: open the card and set **Display name**. A name you set stays with the card if you relink the bank, since it's kept by bank and last four as well.
 
 | You’ll see | Meaning |
 |------------|---------|
@@ -71,7 +71,7 @@ On a **credit card**:
 | | What it is |
 |--|------------|
 | **Loans & installments** | Open the **loan charge** or **installment** row. Enter remaining, remaining months, and the **statement payment**. **My Loan** also uses the **fixed APR** from the loan email (interest this statement = remaining × APR ÷ 12). **Pay Over Time** fee is payment minus remaining ÷ months. That payment is **already in the card minimum**. Chase: do not pay “Statement balance” or you pay the whole loan off at once; “Interest saving balance” includes the monthly loan payment. |
-| **Pay off by date** | A plan to clear a promo (0% APR) or extra balance by a date you choose. Accounts → card → **Pay off by date**. Extra principal you intend to send with the statement payment. |
+| **Pay off by date** | A plan to clear a promo (0% APR) or extra balance by a date you choose. Accounts → card → **Add a pay-off plan**. Extra principal you intend to send with the statement payment. |
 
 **Record this month’s payment** reduces remaining in the app. **Mark paid off** and **Delete plan** each ask first. These show on **Recurring** on the card’s due date.
 
@@ -101,7 +101,7 @@ Transaction detail: **Suggest with Apple Intelligence** picks a category from th
 
 ## Recurring
 
-Detected subscriptions and repeating bills. Fixed-price subs need the same merchant and amount on a schedule. Phone, electric, and similar bills can **vary** — mark one charge **Monthly** or **Yearly** on Transaction detail, or the app may pick them up when the cadence is regular. A **month grid** at the top marks the days bills are due, a year ahead; tap a day to list those charges under the calendar, and tap it again to clear it. **Active** vs **Ended**. Shows next charge and estimated monthly total (`~` when the amount changes).
+Detected subscriptions and repeating bills. Fixed-price subs need the same merchant and amount on a schedule. Phone, electric, and similar bills can **vary** — mark one charge **Monthly** or **Yearly** on Transaction detail, or the app may pick them up when the cadence is regular. A **month grid** at the top marks the days bills are due, a year ahead; tap a day to list those charges under the calendar, and **Clear** to go back. **Active** vs **Ended**. Shows next charge and estimated monthly total (`~` when the amount changes).
 
 Tap a bill for its amount, schedule, and charges. **It's cancelled** moves it to **Ended**; **Not a recurring bill** takes it off this tab. Both ask first and apply to every charge from that merchant. An ended bill you marked cancelled has **Mark active again**.
 
@@ -121,3 +121,7 @@ A **monthly cap**, **expected income**, and **per-category limits** compared to 
 - Push alerts when you go over budget (the Budget tab still shows remaining / over)
 - Automatic sync to another iPhone (use backup, or Sync from Plaid on that phone)
 - A Budget Magi server that holds your Plaid secret (keys stay on the phone)
+
+## Larger screens
+
+On iPhone Duo's inner screen and other wide windows, Transactions shows Total Spend, Total Income and Net side by side, and Recurring puts the calendar beside the bills. In a window wide enough for two columns, like iPad or Mac, Transactions, Accounts and Settings show the list on the left and what you open on the right.

@@ -33,6 +33,8 @@ struct ContentView: View {
     /// The question bar above the keyboard, open while a question is being typed.
     @State private var isAsking = false
     @State private var showStoreRecovered = AppStoreRecovery.needsNotice
+    /// Folding or unfolding the Duo changes this, and the tabs re-lay themselves out.
+    @State private var appWidth: CGFloat = 0
 
     /// Transactions, unless a Debug build was launched with `-screen <tab>`.
     private static var launchTab: AppTab {
@@ -87,6 +89,8 @@ struct ContentView: View {
             .tag(AppTab.settings)
         }
         .environment(\.screenshotPrivacy, screenshotPrivacy)
+        .environment(\.appWidth, appWidth)
+        .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { appWidth = $0 }
         // With a side tab bar (iPhone Duo, iPad, Mac) the Ask field floats over the bottom of each
         // list, so lists get room to scroll their last rows clear of it. A bottom tab bar
         // already reserves that space.
@@ -104,6 +108,8 @@ struct ContentView: View {
             } openChat: {
                 askRequest = AskRequest(question: nil)
             }
+            // With a hardware keyboard nothing covers it, and the composer would show doubled.
+            .opacity(isAsking ? 0 : 1)
         }
         // Typing happens in a bar of its own, because the accessory stays put behind the keyboard.
         .overlay(alignment: .bottom) {
@@ -237,7 +243,7 @@ struct AllTransactionsView: View {
     }
 
     var body: some View {
-        NavigationStack {
+        AdaptiveNavigation {
             List {
                 if sampleData.isActive {
                     SampleDataBanner()
@@ -299,51 +305,68 @@ struct AllTransactionsView: View {
                     if period != .all {
                         PeriodStepper(period: period, referenceDate: $referenceDate)
                     }
-                    NavigationLink {
-                        CategorySpendView(period: period, referenceDate: referenceDate)
-                    } label: {
+                    if showsTotalsAcross {
+                        // One row of three on a wide single column, such as the Duo's inner screen.
+                        HStack(alignment: .top, spacing: 16) {
+                            NavigationLink {
+                                CategorySpendView(period: period, referenceDate: referenceDate)
+                            } label: {
+                                totalTile("Total Spend", value: totalSpend, color: .primary, note: "Tap for categories")
+                            }
+                            .buttonStyle(.plain)
+                            Divider()
+                            totalTile("Total Income", value: totalIncome, color: totalIncome > 0.005 ? .green : .primary, note: "Earnings")
+                            Divider()
+                            totalTile("Net", value: periodNet, color: periodNet > 0.005 ? .green : .primary, note: "Income − spend")
+                        }
+                        .padding(.vertical, 4)
+                    } else {
+                        NavigationLink {
+                            CategorySpendView(period: period, referenceDate: referenceDate)
+                        } label: {
+                            HStack {
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Text("Total Spend")
+                                        .font(.headline)
+                                    Text(periodLabel)
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                    Text("Tap for category chart")
+                                        .font(.caption2)
+                                        .foregroundStyle(.tertiary)
+                                }
+                                Spacer()
+                                MoneyText(totalSpend)
+                                    .font(.title2.bold())
+                                    .foregroundStyle(.primary)
+                            }
+                        }
                         HStack {
                             VStack(alignment: .leading, spacing: 4) {
-                                Text("Total Spend")
+                                Text("Total Income")
                                     .font(.headline)
                                 Text(periodLabel)
                                     .font(.caption)
                                     .foregroundStyle(.secondary)
-                                Text("Tap for category chart")
-                                    .font(.caption2)
-                                    .foregroundStyle(.tertiary)
                             }
                             Spacer()
-                            MoneyText(totalSpend)
+                            MoneyText(totalIncome)
                                 .font(.title2.bold())
-                                .foregroundStyle(.primary)
+                                .foregroundStyle(totalIncome > 0.005 ? .green : .primary)
                         }
-                    }
-                    HStack {
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text("Total Income")
-                                .font(.headline)
-                            Text(periodLabel)
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
+                        HStack {
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text("Net")
+                                    .font(.subheadline.weight(.semibold))
+                                Text("Income − spend")
+                                    .font(.caption2)
+                                    .foregroundStyle(.secondary)
+                            }
+                            Spacer()
+                            MoneyText(periodNet)
+                                .font(.title3.weight(.semibold))
+                                .foregroundStyle(periodNet > 0.005 ? .green : .primary)
                         }
-                        Spacer()
-                        MoneyText(totalIncome)
-                            .font(.title2.bold())
-                            .foregroundStyle(totalIncome > 0.005 ? .green : .primary)
-                    }
-                    HStack {
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text("Net")
-                                .font(.subheadline.weight(.semibold))
-                            Text("Income − spend")
-                                .font(.caption2)
-                                .foregroundStyle(.secondary)
-                        }
-                        Spacer()
-                        MoneyText(periodNet)
-                            .font(.title3.weight(.semibold))
-                            .foregroundStyle(periodNet > 0.005 ? .green : .primary)
                     }
                     Text(activityLine)
                         .font(.caption)
@@ -532,6 +555,30 @@ struct AllTransactionsView: View {
                 }
             }
         }
+    }
+
+    @Environment(\.appWidth) private var appWidth
+
+    /// A single column wide enough for three totals side by side, but not split into two columns.
+    private var showsTotalsAcross: Bool {
+        appWidth >= LayoutWidth.roomy && appWidth < LayoutWidth.twoColumn
+    }
+
+    private func totalTile(_ title: String, value: Double, color: Color, note: String) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(title)
+                .font(.subheadline.weight(.semibold))
+            MoneyText(value)
+                .font(.title2.bold())
+                .foregroundStyle(color)
+                .minimumScaleFactor(0.7)
+                .lineLimit(1)
+            Text(note)
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .contentShape(Rectangle())
     }
 
     private var activityLine: String {

@@ -293,9 +293,13 @@ struct UpcomingBillRow: View {
                         .font(.body.weight(.semibold))
                         .foregroundStyle(urgencyColor)
                 } else {
+                    // No minimum from the bank, so this is the balance, not what's due.
                     MoneyText(max(0, account.currentBalance))
                         .font(.body.weight(.semibold))
                         .foregroundStyle(urgencyColor)
+                    Text("Balance · no minimum shown")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
                 }
                 if installmentIncluded > 0.005 {
                     Text("Includes \(installmentIncluded.formatted(.currency(code: "USD"))) in installments")

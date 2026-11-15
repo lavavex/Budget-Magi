@@ -27,6 +27,33 @@ enum AskLedger {
         var label: String
     }
 
+    /// Accounts a question names, by display name or last four ("my 1002 card", "Blue Cash").
+    static func accountsNamed(in question: String, among accounts: [BankAccount]) -> [BankAccount] {
+        let text = question.lowercased()
+        let digits = Set(text.split { !$0.isNumber }.map(String.init))
+        return accounts.filter { account in
+            if let mask = account.mask, mask.count >= 4, digits.contains(mask) { return true }
+            // The name without its last four, e.g. "blue cash everyday®".
+            let name = account.displayName.lowercased()
+                .replacingOccurrences(of: "···", with: " ")
+                .split(separator: " ")
+                .filter { !$0.allSatisfy(\.isNumber) }
+                .joined(separator: " ")
+            return name.count >= 4 && text.contains(name)
+        }
+    }
+
+    /// The spending category a question names, like "dining" in "how much did I spend on dining",
+    /// for when the model leaves it out of a tool call. Two-word names ("home internet") count too.
+    static func categoryNamed(in question: String) -> String? {
+        let words = question.lowercased().split { !$0.isLetter }.map(String.init)
+        let pairs = zip(words, words.dropFirst()).map { "\($0) \($1)" }
+        for candidate in pairs + words where candidate != "other" {
+            if let name = KnownCategory.canonicalName(for: candidate) { return name }
+        }
+        return nil
+    }
+
     /// Whether a question's wording covers more than one month, like "since August" or "the last
     /// three months". Without that, a second month in the model's arguments is a mistake.
     static func asksForSeveralMonths(_ question: String) -> Bool {

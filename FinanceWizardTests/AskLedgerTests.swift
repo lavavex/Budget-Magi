@@ -441,4 +441,20 @@ final class AskLedgerTests: XCTestCase {
             paymentMethod: "Card"
         ))
     }
+
+    func testCategoryNamedInTheQuestionFillsADroppedFilter() {
+        XCTAssertEqual(AskLedger.categoryNamed(in: "How much did I spend on dining in October?"), "Dining")
+        XCTAssertEqual(AskLedger.categoryNamed(in: "What did home internet cost me?"), "Home Internet")
+        XCTAssertNil(AskLedger.categoryNamed(in: "How much did I spend this month?"))
+        XCTAssertNil(AskLedger.categoryNamed(in: "What's my biggest category?"))
+        XCTAssertNil(AskLedger.categoryNamed(in: "Any other spending?"))
+    }
+
+    func testQuestionAboutOneCardFindsJustThatCard() {
+        let travel = BankAccount(accountId: "a1", itemId: "i", name: "Example Travel Card", mask: "1002", type: "credit", institutionName: "Example Bank", currentBalance: 400)
+        let other = BankAccount(accountId: "a2", itemId: "i", name: "Example Cash Card", mask: "4103", type: "credit", institutionName: "Example Bank", currentBalance: 900)
+        XCTAssertEqual(AskLedger.accountsNamed(in: "How much do I owe on Example Travel Card ···1002?", among: [travel, other]).map(\.accountId), ["a1"])
+        XCTAssertEqual(AskLedger.accountsNamed(in: "what's on my 4103 card", among: [travel, other]).map(\.accountId), ["a2"])
+        XCTAssertTrue(AskLedger.accountsNamed(in: "How much do I owe on my cards?", among: [travel, other]).isEmpty)
+    }
 }

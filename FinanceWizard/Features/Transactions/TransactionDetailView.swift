@@ -155,8 +155,15 @@ struct TransactionDetailView: View {
             }
 
             Section("Details") {
-                LabeledContent("Date") {
+                LabeledContent(transaction.isPending == true ? "Date" : "Posted") {
                     Text(transaction.date, style: .date)
+                }
+                // The purchase day, when the bank posted it on a later day.
+                if let bought = transaction.authorizedDate,
+                   !Calendar.current.isDate(bought, inSameDayAs: transaction.date) {
+                    LabeledContent("Purchased") {
+                        Text(bought, style: .date)
+                    }
                 }
                 LabeledContent("Account") {
                     HStack(spacing: 8) {

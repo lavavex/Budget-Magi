@@ -108,158 +108,24 @@ struct SubscriptionsView: View {
             }
         }
     }
+    /// Calendar beside the bills when the window is wide, like the Duo's inner screen.
+    @Environment(\.appWidth) private var appWidth
+
+    private var calendarBesideBills: Bool { appWidth >= LayoutWidth.roomy }
+
     var body: some View {
         NavigationStack(path: $path) {
-            List {
-                Section {
-                    RecurringCalendarView(chargeDays: chargeDays, selectedDay: $selectedDay)
-                    
-                        .frame(minHeight: 240)
-                        .listRowInsets(EdgeInsets())
-                        .listRowBackground(Color.clear)
-                        .padding(.vertical, -16)
-                }
-                    if selectedDay != nil {
-                        Section {
-                        if chargesOnSelectedDay.isEmpty && payoffOnSelectedDay.isEmpty {
-                            VStack{
-                                Image(systemName: "calendar")
-                                    .font(.largeTitle)
-                                    .padding(.bottom, 8)
-                                Text("No recurring charges on this day")
-                                    .multilineTextAlignment(.center)
-                            }
-                            .foregroundStyle(.secondary)
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 8)
-                                
-                        }
-                        else {
-                        ForEach(payoffOnSelectedDay, id: \.planId) { plan in
-                            NavigationLink {
-                                PayoffPlanEditorView(existing: plan)
-                            } label: {
-                                PayoffPlanRowView(plan: plan, cardDueDate: cardDueDate(for: plan))
-                            }
-                        }
-                        ForEach(chargesOnSelectedDay) { item in
-                            NavigationLink(value: item.id) {
-                                subscriptionRow(item)
-                            }
-                            }
-                        }
+            Group {
+                if calendarBesideBills {
+                    HStack(spacing: 0) {
+                        List { calendarSections }
+                            .frame(width: 380)
+                        List { billSections }
                     }
-                }
-                Section {
-                    HStack {
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text("Extra bills")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                            MoneyText(extraMonthly)
-                                .font(.title2.weight(.bold))
-                        }
-                        Spacer()
-                        VStack(alignment: .trailing, spacing: 2) {
-                            Text(monthlySummaryLabel)
-                                .font(.subheadline)
-                                .foregroundStyle(.secondary)
-                            if onCardMonthly > 0.005 {
-                                Text("+\(onCardMonthly.formatted(.currency(code: "USD"))) on cards")
-                                    .font(.caption2)
-                                    .foregroundStyle(.tertiary)
-                            }
-                        }
-                    }
-                    .padding(.vertical, 4)
-                } footer: {
-                    Text("Extra bills are subscriptions and other charges besides the card payment. Loans and installments are already in the card minimum.")
-                }
-
-                if !issuerPlans.isEmpty {
-                    Section {
-                        ForEach(issuerPlans, id: \.planId) { plan in
-                            NavigationLink {
-                                PayoffPlanEditorView(existing: plan)
-                            } label: {
-                                PayoffPlanRowView(plan: plan, cardDueDate: cardDueDate(for: plan))
-                            }
-                        }
-                    } header: {
-                        Text("On your cards")
-                    } footer: {
-                        Text("Due with the statement. Included in the card minimum — not extra cash.")
-                    }
-                }
-
-                if !extraPayoffPlans.isEmpty {
-                    Section {
-                        ForEach(extraPayoffPlans, id: \.planId) { plan in
-                            NavigationLink {
-                                PayoffPlanEditorView(existing: plan)
-                            } label: {
-                                PayoffPlanRowView(plan: plan, cardDueDate: cardDueDate(for: plan))
-                            }
-                        }
-                    } header: {
-                        Text("Pay off extra")
-                    }
-                }
-
-                Section {
-                    if isScanning && candidates.isEmpty {
-                        ProgressView("Scanning…")
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 12)
-                            .listRowBackground(Color.clear)
-                    } else if current.isEmpty {
-                        ContentUnavailableView(
-                            "No repeating bills yet",
-                            systemImage: "repeat.circle",
-                            description: Text("Subscriptions and marked monthly bills show up here.")
-                        )
-                        .listRowBackground(Color.clear)
-                    } else {
-                        ForEach(current) { item in
-                            NavigationLink(value: item.id) {
-                                subscriptionRow(item)
-                            }
-                        }
-                    }
-                } header: {
-                    Text("Bills")
-                }
-
-                if !lapsed.isEmpty {
-                    Section {
-                        ForEach(lapsed) { item in
-                            NavigationLink(value: item.id) {
-                                subscriptionRow(item)
-                            }
-                        }
-                    } header: {
-                        Text("Hasn't charged lately")
-                    } footer: {
-                        Text("These missed their usual date, so they aren't counted in Extra bills. If one has ended, open it and mark it cancelled.")
-                    }
-                }
-
-                if !ended.isEmpty || !endedPayoffPlans.isEmpty {
-                    Section {
-                        ForEach(ended) { item in
-                            NavigationLink(value: item.id) {
-                                subscriptionRow(item)
-                            }
-                        }
-                        ForEach(endedPayoffPlans, id: \.planId) { plan in
-                            NavigationLink {
-                                PayoffPlanEditorView(existing: plan)
-                            } label: {
-                                PayoffPlanRowView(plan: plan, cardDueDate: cardDueDate(for: plan))
-                            }
-                        }
-                    } header: {
-                        Text("Ended")
+                } else {
+                    List {
+                        calendarSections
+                        billSections
                     }
                 }
             }
@@ -282,6 +148,164 @@ struct SubscriptionsView: View {
             }
         }
         .animation(.easeOut(duration: 0.4), value: isSpinning)
+    }
+
+    @ViewBuilder
+    private var calendarSections: some View {
+        Section {
+            RecurringCalendarView(chargeDays: chargeDays, selectedDay: $selectedDay)
+                .frame(minHeight: 240)
+                .listRowInsets(EdgeInsets())
+                .listRowBackground(Color.clear)
+                .padding(.vertical, -16)
+                // Beside the bills, keep the month arrows off the other column's edge.
+                .padding(.horizontal, calendarBesideBills ? 12 : 0)
+        }
+        if let selectedDay {
+            Section {
+                if chargesOnSelectedDay.isEmpty && payoffOnSelectedDay.isEmpty {
+                    Text("No recurring charges on this day.")
+                        .foregroundStyle(.secondary)
+                } else {
+                    ForEach(payoffOnSelectedDay, id: \.planId) { plan in
+                        NavigationLink {
+                            PayoffPlanEditorView(existing: plan)
+                        } label: {
+                            PayoffPlanRowView(plan: plan, cardDueDate: cardDueDate(for: plan))
+                        }
+                    }
+                    ForEach(chargesOnSelectedDay) { item in
+                        NavigationLink(value: item.id) {
+                            subscriptionRow(item)
+                        }
+                    }
+                }
+            } header: {
+                HStack {
+                    Text(Calendar.current.date(from: selectedDay)?.formatted(date: .abbreviated, time: .omitted) ?? "Selected day")
+                    Spacer()
+                    Button("Clear") { self.selectedDay = nil }
+                        .font(.subheadline)
+                        .textCase(nil)
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var billSections: some View {
+        Section {
+            HStack {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Extra bills")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    MoneyText(extraMonthly)
+                        .font(.title2.weight(.bold))
+                }
+                Spacer()
+                VStack(alignment: .trailing, spacing: 2) {
+                    Text(monthlySummaryLabel)
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                    if onCardMonthly > 0.005 {
+                        Text("+\(onCardMonthly.formatted(.currency(code: "USD"))) on cards")
+                            .font(.caption2)
+                            .foregroundStyle(.tertiary)
+                    }
+                }
+            }
+            .padding(.vertical, 4)
+        } footer: {
+            Text("Extra bills are subscriptions and other charges besides the card payment. Loans and installments are already in the card minimum.")
+        }
+
+        if !issuerPlans.isEmpty {
+            Section {
+                ForEach(issuerPlans, id: \.planId) { plan in
+                    NavigationLink {
+                        PayoffPlanEditorView(existing: plan)
+                    } label: {
+                        PayoffPlanRowView(plan: plan, cardDueDate: cardDueDate(for: plan))
+                    }
+                }
+            } header: {
+                Text("On your cards")
+            } footer: {
+                Text("Due with the statement. Included in the card minimum — not extra cash.")
+            }
+        }
+
+        if !extraPayoffPlans.isEmpty {
+            Section {
+                ForEach(extraPayoffPlans, id: \.planId) { plan in
+                    NavigationLink {
+                        PayoffPlanEditorView(existing: plan)
+                    } label: {
+                        PayoffPlanRowView(plan: plan, cardDueDate: cardDueDate(for: plan))
+                    }
+                }
+            } header: {
+                Text("Pay off extra")
+            }
+        }
+
+        Section {
+            if isScanning && candidates.isEmpty {
+                ProgressView("Scanning…")
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 12)
+                    .listRowBackground(Color.clear)
+            } else if current.isEmpty {
+                ContentUnavailableView(
+                    "No repeating bills yet",
+                    systemImage: "repeat.circle",
+                    description: Text("Subscriptions and marked monthly bills show up here.")
+                )
+                .listRowBackground(Color.clear)
+            } else {
+                ForEach(current) { item in
+                    NavigationLink(value: item.id) {
+                        subscriptionRow(item)
+                    }
+                }
+            }
+        } header: {
+            Text("Bills")
+        }
+
+        if !lapsed.isEmpty {
+            Section {
+                ForEach(lapsed) { item in
+                    NavigationLink(value: item.id) {
+                        subscriptionRow(item)
+                    }
+                }
+            } header: {
+                Text("Hasn't charged lately")
+            } footer: {
+                Text("These missed their usual date, so they aren't counted in Extra bills. If one has ended, open it and mark it cancelled.")
+            }
+        }
+
+        if !ended.isEmpty || !endedPayoffPlans.isEmpty {
+            Section {
+                ForEach(ended) { item in
+                    NavigationLink(value: item.id) {
+                        subscriptionRow(item)
+                    }
+                }
+                ForEach(endedPayoffPlans, id: \.planId) { plan in
+                    NavigationLink {
+                        PayoffPlanEditorView(existing: plan)
+                    } label: {
+                        PayoffPlanRowView(plan: plan, cardDueDate: cardDueDate(for: plan))
+                    }
+                }
+            } header: {
+                Text("Ended")
+            }
+        }
     }
 
     private func recurringDetail(_ item: SubscriptionCandidate, showCancelledButton: Bool) -> some View {
@@ -460,8 +484,8 @@ struct SubscriptionsView: View {
         transactions
             .filter { tx in
                 if tx.isDeclaredNotSubscription { return false }
-                let vendor = SubscriptionAnalytics.normalizeVendor(tx.title)
-                if vendor != item.normalizedVendor { return false }
+                guard SubscriptionAnalytics.charge(title: tx.title, category: tx.category, belongsTo: item.normalizedVendor)
+                else { return false }
                 // User-marked or variable bills (phone, electric): amount may change.
                 if item.isUserDeclared || item.amountVaries { return true }
                 let tol = max(0.25, item.typicalAmount * 0.01)

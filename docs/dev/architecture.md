@@ -138,6 +138,8 @@ RootWithSplash
 
 See [How it works](how-it-works.md) for the file-level map. See [Onboarding](onboarding.md).
 
+
+**Layout by width.** `App/AdaptiveLayout.swift` publishes the window's width as `appWidth` from `ContentView`. Size class can't separate the iPhone Duo's cover (466 pt), its inner screen (669 pt, 951 pt sideways) and an iPad, since all report regular width. At `LayoutWidth.roomy` (600 pt) Transactions puts its totals side by side and Recurring puts the calendar beside the bills; at `LayoutWidth.twoColumn` (900 pt) `AdaptiveNavigation` swaps a tab's `NavigationStack` for a `NavigationSplitView`, so links open in the detail column. Card nicknames are also kept under `card:<bank>|<last four>` in `CardLabelStore`, because relinking a bank gives every account a new id.
 ## Persistence
 
 | Concern | Technology |

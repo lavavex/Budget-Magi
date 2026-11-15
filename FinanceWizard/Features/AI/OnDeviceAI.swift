@@ -83,7 +83,7 @@ enum OnDeviceAI {
             MoneySnapshotTool(modelContext: modelContext),
             BudgetStatusTool(modelContext: modelContext),
             UpcomingPaymentsTool(modelContext: modelContext),
-            AccountBalancesTool(modelContext: modelContext),
+            AccountBalancesTool(modelContext: modelContext, asked: asked),
             RecurringChargesTool(modelContext: modelContext),
             SearchTransactionsTool(modelContext: modelContext),
         ]

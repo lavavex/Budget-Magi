@@ -32,6 +32,8 @@ struct PeriodStepper: View {
         }
         .labelStyle(.iconOnly)
         .buttonStyle(.borderless)
+        // The separator would otherwise start at the centered label, halfway across the row.
+        .alignmentGuide(.listRowSeparatorLeading) { _ in 0 }
     }
 
     private func step(_ amount: Int) {

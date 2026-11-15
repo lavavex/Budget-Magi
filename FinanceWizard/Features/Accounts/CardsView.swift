@@ -54,7 +54,7 @@ struct CardsView: View {
     }
 
     var body: some View {
-        NavigationStack {
+        AdaptiveNavigation {
             List {
                 // MARK: Overview
                 Section {
@@ -240,7 +240,16 @@ struct CardsView: View {
                 await syncFromPlaid()
             }
             .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
+                // Same order as Transactions: period, then sort (which applies inside each account).
+                ToolbarItemGroup(placement: .topBarTrailing) {
+                    PeriodFilterMenu(
+                        period: $period,
+                        referenceDate: $referenceDate,
+                        transactions: transactions,
+                        // Additional dates keep the month list useful even with few purchases.
+                        additionalDates: payments.map(\.date),
+                        showTitle: false
+                    )
                     Menu {
                         Picker("Sort", selection: $sort) {
                             ForEach(TransactionSort.allCases) { option in
@@ -251,16 +260,6 @@ struct CardsView: View {
                         Label("Sort", systemImage: "arrow.up.arrow.down")
                     }
                 }
-                ToolbarItem(placement: .topBarTrailing) {
-                    PeriodFilterMenu(
-                        period: $period,
-                        referenceDate: $referenceDate,
-                        transactions: transactions,
-                        // Additional dates keep the month list useful even with few purchases.
-                        additionalDates: payments.map(\.date),
-                        showTitle: true
-                    )
-                }
             }
             .task(id: refreshToken) {
                 // Clear orphan/duplicate deposit accounts (e.g. X Money after Relink)
@@ -268,6 +267,9 @@ struct CardsView: View {
                     try? modelContext.save()
                 }
                 InstitutionLogoCache.prefetch(accounts: accounts)
+                if !DemoMode.isActive {
+                    CardLabelStore.backfillCardKeys(accounts.map { ($0.accountId, $0.institutionName, $0.mask) })
+                }
                 rebuildBoard()
             }
         }

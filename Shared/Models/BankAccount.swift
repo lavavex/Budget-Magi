@@ -99,13 +99,13 @@ final class BankAccount {
 
     /// User nickname when set, otherwise a readable default.
     var displayName: String {
-        CardLabelStore.label(accountId: accountId, fallback: defaultDisplayName)
+        CardLabelStore.label(accountId: accountId, institution: institutionName, mask: mask, fallback: defaultDisplayName)
     }
 
     /// Subtitle under the nickname (institution / original Plaid name).
     /// Omits last-four when the display name already ends with it (product pick → "Card 1234").
     var subtitleDetail: String {
-        let customLabel = CardLabelStore.label(accountId: accountId, fallback: defaultDisplayName)
+        let customLabel = displayName
         var parts: [String] = []
         if !institutionName.isEmpty {
             parts.append(institutionName)

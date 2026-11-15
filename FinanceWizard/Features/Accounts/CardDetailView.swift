@@ -401,7 +401,7 @@ struct CardDetailView: View {
                             )
                         }
                     }
-                    Button("Pay off by date") {
+                    Button("Add a pay-off plan") {
                         showAddPayoff = true
                     }
                 } header: {
@@ -477,18 +477,22 @@ struct CardDetailView: View {
     /// Persist a custom display name (or clear it if empty / same as Plaid name).
     private func saveNickname() {
         let value = nicknameDraft.trimmingCharacters(in: .whitespacesAndNewlines)
-        let plaidFallback = creditAccount?.plaidDisplayName
-            ?? bankAccount?.plaidDisplayName
-            ?? rawPaymentMethod
+        let plaidFallback = account?.defaultDisplayName ?? rawPaymentMethod
         // Empty or unchanged → store nil (use bank name).
-        let custom: String? = (value.isEmpty || value == plaidFallback) ? nil : value
+        let custom: String? = (value.isEmpty || value == plaidFallback || value == account?.plaidDisplayName) ? nil : value
         // Nicknames persist outside the store, and sample cards shouldn't leave any behind.
         if !DemoMode.isActive {
-            CardLabelStore.setLabel(
-                custom,
-                accountId: account?.accountId,
-                paymentMethod: rawPaymentMethod
-            )
+            if let account {
+                // Also under the bank and last four, so relinking the bank keeps the name.
+                CardLabelStore.setLabel(
+                    custom,
+                    accountId: account.accountId,
+                    institution: account.institutionName,
+                    mask: account.mask
+                )
+            } else {
+                CardLabelStore.setLabel(custom, paymentMethod: rawPaymentMethod)
+            }
         }
         titleName = custom ?? plaidFallback
         nicknameDraft = titleName

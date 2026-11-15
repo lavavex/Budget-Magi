@@ -62,4 +62,41 @@ final class DisplayTextTests: XCTestCase {
         XCTAssertEqual(SnapshotPeriod.month.sentenceLabel(referenceDate: date(9, 10), now: date(11, 14), calendar: calendar), "September 2026")
         XCTAssertEqual(SnapshotPeriod.all.sentenceLabel(), "all time")
     }
+
+    // MARK: - Recurring bill detail
+
+    func testBillDetailListsChargesUnderTheProvidersLongerName() {
+        // Detection folds "Example Net Services" into "Example Net", so the detail must too.
+        XCTAssertTrue(SubscriptionAnalytics.charge(title: "EXAMPLE NET", category: "Home Internet", belongsTo: "example net"))
+        XCTAssertTrue(SubscriptionAnalytics.charge(title: "Example Net Services", category: "Home Internet", belongsTo: "example net"))
+        // Only bills merge that way; a shop's longer name is a different merchant.
+        XCTAssertFalse(SubscriptionAnalytics.charge(title: "Example Shop Kitchen", category: "Shopping", belongsTo: "example shop"))
+    }
+
+    // MARK: - Plaid errors
+
+    func testCommonPlaidErrorsReadInPlainWords() {
+        let gone = PlaidAPIError.http(status: 400, code: "ITEM_NOT_FOUND", message: "The Item you requested cannot be found.")
+        XCTAssertEqual(gone.errorDescription, "This bank isn't connected on this iPhone anymore. Link it again in Settings, or unlink it there.")
+        let other = PlaidAPIError.http(status: 400, code: "SOMETHING_ELSE", message: "Details.")
+        XCTAssertEqual(other.errorDescription, "Plaid (SOMETHING_ELSE): Details.")
+    }
+
+    // MARK: - Nicknames across a relink
+
+    func testNicknameFollowsTheCardWhenTheBankIsRelinked() {
+        let defaults = UserDefaults.standard
+        let saved = defaults.dictionary(forKey: "card.customLabels")
+        defer {
+            defaults.set(saved, forKey: "card.customLabels")
+            CardLabelStore.resetMemoryCache()
+        }
+        defaults.removeObject(forKey: "card.customLabels")
+        CardLabelStore.resetMemoryCache()
+
+        CardLabelStore.setLabel("Travel Card", accountId: "old-id", institution: "Example Bank", mask: "1234")
+        // Relinking gives the same card a new account id.
+        XCTAssertEqual(CardLabelStore.label(accountId: "new-id", institution: "Example Bank", mask: "1234", fallback: "Example Bank ···1234"), "Travel Card")
+        XCTAssertEqual(CardLabelStore.label(accountId: "other-id", institution: "Example Bank", mask: "9999", fallback: "Example Bank ···9999"), "Example Bank ···9999")
+    }
 }

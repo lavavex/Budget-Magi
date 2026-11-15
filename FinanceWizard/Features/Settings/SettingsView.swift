@@ -51,7 +51,7 @@ struct SettingsView: View {
     @State private var showEraseAllData = false
 
     var body: some View {
-        NavigationStack {
+        AdaptiveNavigation {
             Form {
                 if sampleData.isActive {
                     SampleDataBanner()
@@ -319,21 +319,6 @@ struct SettingsView: View {
                         }
                     }
 
-                    if showsDeveloperTools, !sampleData.isActive {
-                    Button {
-                        showDebugExportConfirm = true
-                    } label: {
-                        if isExportingDebug {
-                            HStack {
-                                ProgressView()
-                                Text("Preparing export…")
-                            }
-                        } else {
-                            Label("Export database for debug", systemImage: "square.and.arrow.up")
-                        }
-                    }
-                    .disabled(isExportingDebug)
-                    }
                     Link(destination: URL(string: "https://budgetmagi.pages.dev/support.html")!) {
                         Label("Help & support", systemImage: "questionmark.circle")
                     }
@@ -355,6 +340,19 @@ struct SettingsView: View {
                         } label: {
                             Label("Debug", systemImage: "ant")
                         }
+                        Button {
+                            showDebugExportConfirm = true
+                        } label: {
+                            if isExportingDebug {
+                                HStack {
+                                    ProgressView()
+                                    Text("Preparing export…")
+                                }
+                            } else {
+                                Label("Export database for debug", systemImage: "square.and.arrow.up")
+                            }
+                        }
+                        .disabled(isExportingDebug)
                     } header: {
                         Text("Developer")
                     }

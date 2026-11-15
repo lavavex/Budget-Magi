@@ -252,6 +252,14 @@ enum SubscriptionAnalytics {
         return merged
     }
 
+    /// Whether a charge belongs to a detected bill, using the same rule as detection: the same
+    /// vendor, or a bill whose longer name starts with it ("ACME Internet" under "ACME").
+    nonisolated static func charge(title: String, category: String, belongsTo vendorKey: String) -> Bool {
+        let vendor = normalizeVendor(title)
+        if vendor == vendorKey { return true }
+        return isMeteredBillCategory(category) && vendor.hasPrefix(vendorKey + " ")
+    }
+
     /// Utilities and insurance change price, so the newest charge is what it costs now.
     nonisolated private static func meteredBillCandidate(
         key: String,
