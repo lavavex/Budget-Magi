@@ -108,7 +108,7 @@ What's coming due: card payments, plus detected subscriptions and repeating bill
 
 Fixed-price subs need the same merchant and amount on a schedule. Phone, electric, and similar bills can **vary** — mark one charge **Monthly** or **Yearly** on Transaction detail, or the app may pick them up when the cadence is regular. A **month grid** marks card due dates in orange and bills in gray, a year ahead; tap a day to list what's due then, and **Clear** to go back. **Active** vs **Ended**. Shows next charge and estimated monthly total (`~` when the amount changes).
 
-Tap a bill for its amount, schedule, and charges. **It's cancelled** moves it to **Ended**; **Not a recurring bill** takes it off this tab. Both ask first and apply to every charge from that merchant. An ended bill you marked cancelled has **Mark active again**.
+Tap a bill for its amount, schedule, and charges. **It's cancelled** moves it to **Ended**; **Not a recurring bill** takes it off this tab. Both ask first and apply to every charge from that merchant. An ended bill you marked cancelled has **Mark active again**. **Ended** shows the three that ended most recently; **See all ended** lists the rest, along with finished pay-off plans.
 
 Bills that missed their usual date are listed under **Hasn't charged lately** and aren't counted in Extra bills; if one has ended, open it and mark it cancelled. **Extra bills** is subscriptions and other charges besides the card payment. **On your cards** is loans and installments that are already in the card minimum — they do not add to Extra bills. Pay-off-extra plans are extra principal you mean to send with the statement.
 

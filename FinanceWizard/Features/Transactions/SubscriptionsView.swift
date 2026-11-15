@@ -43,6 +43,53 @@ struct SubscriptionsView: View {
             .sorted { $0.installmentTotal > $1.installmentTotal }
     }
 
+    /// Ended bills, most recently charged first. Months of old detections pile up here, so the
+    /// tab shows a few and the rest are one tap away.
+    private var endedBills: [SubscriptionCandidate] {
+        ended.sorted { $0.lastDate > $1.lastDate }
+    }
+
+    private var endedCount: Int { ended.count + endedPayoffPlans.count }
+
+    private static let endedShown = 3
+    private static let allEndedID = "ended:all"
+
+    private func endedPlanLink(_ plan: PayoffPlan) -> some View {
+        NavigationLink {
+            PayoffPlanEditorView(existing: plan)
+        } label: {
+            PayoffPlanRowView(plan: plan, cardDueDate: cardDueDate(for: plan))
+        }
+    }
+
+    /// Everything that ended: bills you marked cancelled or that stopped charging, and finished plans.
+    private var allEndedList: some View {
+        List {
+            if !endedBills.isEmpty {
+                Section {
+                    ForEach(endedBills) { item in
+                        NavigationLink(value: item.id) {
+                            subscriptionRow(item)
+                        }
+                    }
+                } header: {
+                    Text("Bills")
+                } footer: {
+                    Text("Bills you marked cancelled, and ones that stopped charging.")
+                }
+            }
+            if !endedPayoffPlans.isEmpty {
+                Section("Pay-off plans") {
+                    ForEach(endedPayoffPlans, id: \.planId) { plan in
+                        endedPlanLink(plan)
+                    }
+                }
+            }
+        }
+        .navigationTitle("Ended")
+        .navigationBarTitleDisplayMode(.inline)
+    }
+
     private var endedPayoffPlans: [PayoffPlan] {
         payoffPlans.filter { !$0.isActive }.sorted { $0.updatedAt > $1.updatedAt }
     }
@@ -157,7 +204,9 @@ struct SubscriptionsView: View {
             }
             .navigationTitle("Upcoming")
             .navigationDestination(for: String.self) { id in
-                if let item = candidates.first(where: { $0.id == id }) {
+                if id == Self.allEndedID {
+                    allEndedList
+                } else if let item = candidates.first(where: { $0.id == id }) {
                     recurringDetail(item, showCancelledButton: true)
                 } else if let item = ended.first(where: { $0.id == id }) {
                     recurringDetail(item, showCancelledButton: false)
@@ -361,18 +410,22 @@ struct SubscriptionsView: View {
             }
         }
 
-        if !ended.isEmpty || !endedPayoffPlans.isEmpty {
+        if endedCount > 0 {
             Section {
-                ForEach(ended) { item in
+                ForEach(endedBills.prefix(Self.endedShown)) { item in
                     NavigationLink(value: item.id) {
                         subscriptionRow(item)
                     }
                 }
-                ForEach(endedPayoffPlans, id: \.planId) { plan in
-                    NavigationLink {
-                        PayoffPlanEditorView(existing: plan)
-                    } label: {
-                        PayoffPlanRowView(plan: plan, cardDueDate: cardDueDate(for: plan))
+                if endedBills.count < Self.endedShown {
+                    ForEach(endedPayoffPlans.prefix(Self.endedShown - endedBills.count), id: \.planId) { plan in
+                        endedPlanLink(plan)
+                    }
+                }
+                if endedCount > Self.endedShown {
+                    // By value, like the bills inside it, so they all open on the same path.
+                    NavigationLink(value: Self.allEndedID) {
+                        Text("See all \(endedCount) ended")
                     }
                 }
             } header: {
