@@ -66,7 +66,6 @@ struct SettingsView: View {
                         if sampleData.isActive {
                             SampleDataBanner()
                         }
-                        privacySection
                         // Sample data has no keys, banks, or backups of its own.
                         if !sampleData.isActive {
                             plaidSection
@@ -74,11 +73,14 @@ struct SettingsView: View {
                             statusSection
                             appleCardSection
                             backupSection
-                            eraseSection
                         }
                         aboutSection
                         aiSection
                         developerSection
+                        // Last, well away from everything else.
+                        if !sampleData.isActive {
+                            eraseSection
+                        }
                     }
                     .navigationTitle("Settings")
                 }
@@ -255,11 +257,12 @@ struct SettingsView: View {
         var groups: [[SettingsPage]] = []
         if !sampleData.isActive {
             groups.append([.banks] + (WalletSync.isAvailable ? [.appleCard] : []) + [.plaid])
-            groups.append([.privacy, .backup, .ai])
-            groups.append([.about] + (showsDeveloperTools ? [.developer] : []) + [.erase])
+            groups.append([.backup, .ai])
+            groups.append([.about, .developer])
+            groups.append([.erase])
         } else {
-            groups.append([.privacy, .ai])
-            groups.append([.about])
+            groups.append([.ai])
+            groups.append([.about, .developer])
         }
         return groups
     }
@@ -301,8 +304,6 @@ struct SettingsView: View {
                     case .plaid:
                         plaidSection
                         statusSection
-                    case .privacy:
-                        privacySection
                     case .backup:
                         backupSection
                         statusSection
@@ -324,20 +325,6 @@ struct SettingsView: View {
     }
 
     // MARK: - Sections
-
-    /// Hide amounts for screenshots.
-    @ViewBuilder
-    private var privacySection: some View {
-                // MARK: Screenshot privacy
-                Section {
-                    Toggle(isOn: $screenshotPrivacy) {
-                        Label("Hide for screenshots", systemImage: "eye.slash")
-                    }
-                } header: {
-                    // Beside the sidebar the page title already says this.
-                    if !twoColumns { Text("Privacy") }
-                }
-    }
 
     /// The user's own Plaid keys.
     @ViewBuilder
@@ -642,31 +629,37 @@ struct SettingsView: View {
     /// Debug tools for testers.
     @ViewBuilder
     private var developerSection: some View {
-                if showsDeveloperTools, !sampleData.isActive {
-                    Section {
-                        NavigationLink {
-                            DebugMenuView()
-                        } label: {
-                            Label("Debug", systemImage: "ant")
+        Section {
+            Toggle(isOn: $screenshotPrivacy) {
+                Label("Hide for screenshots", systemImage: "eye.slash")
+            }
+            // Debug tools only where DeveloperTools allows them; the toggle above is for everyone.
+            if showsDeveloperTools, !sampleData.isActive {
+                NavigationLink {
+                    DebugMenuView()
+                } label: {
+                    Label("Debug", systemImage: "ant")
+                }
+                Button {
+                    showDebugExportConfirm = true
+                } label: {
+                    if isExportingDebug {
+                        HStack {
+                            ProgressView()
+                            Text("Preparing export…")
                         }
-                        Button {
-                            showDebugExportConfirm = true
-                        } label: {
-                            if isExportingDebug {
-                                HStack {
-                                    ProgressView()
-                                    Text("Preparing export…")
-                                }
-                            } else {
-                                Label("Export database for debug", systemImage: "square.and.arrow.up")
-                            }
-                        }
-                        .disabled(isExportingDebug)
-                    } header: {
-                        // Beside the sidebar the page title already says this.
-                        if !twoColumns { Text("Developer") }
+                    } else {
+                        Label("Export database for debug", systemImage: "square.and.arrow.up")
                     }
                 }
+                .disabled(isExportingDebug)
+            }
+        } header: {
+            // Beside the sidebar the page title already says this.
+            if !twoColumns { Text("Developer") }
+        } footer: {
+            Text("Hide for screenshots masks dollar amounts and card numbers, so you can share a picture of the app.")
+        }
     }
 
     /// UTTypes accepted by the restore file picker.
@@ -913,7 +906,7 @@ struct SettingsView: View {
 
 /// One page in the Settings sidebar, with the icon tile the Settings app would give it.
 enum SettingsPage: String, Hashable, Identifiable {
-    case banks, appleCard, plaid, privacy, backup, ai, about, developer, erase
+    case banks, appleCard, plaid, backup, ai, about, developer, erase
 
     var id: String { rawValue }
 
@@ -922,7 +915,6 @@ enum SettingsPage: String, Hashable, Identifiable {
         case .banks: "Linked banks"
         case .appleCard: "Apple Card"
         case .plaid: "Plaid account"
-        case .privacy: "Privacy"
         case .backup: "Backup & restore"
         case .ai: "On-device AI"
         case .about: "About"
@@ -936,7 +928,6 @@ enum SettingsPage: String, Hashable, Identifiable {
         case .banks: "building.columns.fill"
         case .appleCard: "creditcard.fill"
         case .plaid: "key.fill"
-        case .privacy: "hand.raised.fill"
         case .backup: "lock.shield.fill"
         case .ai: "apple.intelligence"
         case .about: "info"
@@ -950,7 +941,6 @@ enum SettingsPage: String, Hashable, Identifiable {
         case .banks: .blue
         case .appleCard: .black
         case .plaid: .gray
-        case .privacy: .indigo
         case .backup: .green
         case .ai: .purple
         case .about: .gray

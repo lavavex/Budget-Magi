@@ -85,7 +85,7 @@ Tap **Try with sample data** on the Welcome screen, or in **Settings → Linked 
 
 ## 7. Privacy and backup
 
-- **Settings → Hide for screenshots** — masks dollar amounts and card last-four if you share a picture of the app.
+- **Settings → Developer → Hide for screenshots** — masks dollar amounts and card last-four if you share a picture of the app.
 - **Settings → Backup & restore** — encrypted `.fwbackup` you can save (includes keys, banks, and data on this phone). Keep the password somewhere safe.
 
 ## If something goes wrong

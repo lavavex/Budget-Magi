@@ -7,7 +7,7 @@ title: Settings
 
 Plaid keys and banks are required to pull transactions. See [Getting started](getting-started.md) if you haven’t linked yet.
 
-On a narrow screen Settings is one list. With iPhone Duo unfolded sideways, iPad, or Mac, it looks like the Settings app: the app and its version at the top, then pages with colored icons (Linked banks, Apple Card, Plaid account, Privacy, Backup & restore, On-device AI, About, Erase all data), and the page you pick on the right.
+On a narrow screen Settings is one list. With iPhone Duo unfolded sideways, iPad, or Mac, it looks like the Settings app: the app and its version at the top, then pages with colored icons (Linked banks, Apple Card, Plaid account, Backup & restore, On-device AI, About, Developer, and Erase all data on its own at the bottom), and the page you pick on the right.
 
 ## Plaid account
 
@@ -26,19 +26,11 @@ On a narrow screen Settings is one list. With iPhone Duo unfolded sideways, iPad
 | **Relink** | Use when login expired. A bank that needs it shows a **Relink** button; otherwise swipe right on the bank |
 | **Unlink** | Removes the bank from this iPhone |
 
-## Privacy
-
-**Hide for screenshots** masks dollar amounts and card last-four so you can share a picture of the app without balances.
-
 ## Backup & restore
 
 **Back up everything** creates a password-encrypted `.fwbackup` file (keys, banks, transactions, budget, prefs). Keep the password somewhere safe.
 
 **Restore** default is **Safe merge**. It adds banks that aren’t on this phone, with their data. Banks already here keep their tokens and transactions, and Sync keeps them current. **Replace connections from backup** lets the backup’s keys, tokens, and rows win. **Wipe device, then restore** deletes local data first, then restores the backup. If that restore fails, your previous data is put back. Restore only accepts a backup from this app version.
-
-## Erase all data
-
-**Settings → Erase all data** deletes everything on this device, including banks and keys, after you type `DELETE`. It can't be undone. Backup files you saved elsewhere aren't touched, and your bank stays connected in your Plaid account until you remove it there.
 
 ## Apple Card
 
@@ -52,6 +44,14 @@ On a narrow screen Settings is one list. With iPhone Duo unfolded sideways, iPad
 
 Version and build of the TestFlight (or App Store) binary you have installed, plus links to **Help & support** and the **Privacy policy**.
 
-## Developer tools (optional)
+## Developer
 
-**Settings → Developer → Debug** is for testers and contributors: replay Welcome, inspect counts, reset local pieces, or wipe local data. It does **not** change anything in the Plaid Dashboard. Implementation notes: [Developer Settings](../dev/settings.md).
+**Hide for screenshots** masks dollar amounts and card last-four so you can share a picture of the app without balances. It's there for everyone.
+
+**Settings → Developer → Debug** (only on builds with developer tools) is for testers and contributors: replay Welcome, inspect counts, reset local pieces, or wipe local data. It does **not** change anything in the Plaid Dashboard. Implementation notes: [Developer Settings](../dev/settings.md).
+
+## Erase all data
+
+**Settings → Erase all data** deletes everything on this device, including banks and keys, after you type `DELETE`. It can't be undone. Backup files you saved elsewhere aren't touched, and your bank stays connected in your Plaid account until you remove it there.
+
+It's the last thing in Settings, away from everything else.
