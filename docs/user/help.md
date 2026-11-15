@@ -29,7 +29,7 @@ Wait a few seconds and try **Link** again, or check Plaid Dashboard logs.
 
 ### Sync says no banks linked
 
-**Settings → Link bank account**, then **Transactions → Sync → Sync now**.
+**Settings → Link bank account**, then **Home → Sync → Sync now**.
 
 ### Sync works but the list is empty
 
@@ -53,7 +53,7 @@ Some banks need extra Plaid / redirect setup. Sandbox test banks usually don’t
 
 Sync in the app first, then add the widget. If it stays empty, delete it and add it again. More: [Widgets](widgets.md).
 
-## Recurring
+## Upcoming
 
 ### My Chase Loan: what to enter
 
@@ -73,7 +73,7 @@ They are different things:
 
 Loan/installment **remaining** drops when a new statement posts (after Sync). Pay-off-by-date plans have **Record this month’s payment** if you want to tick extra principal by hand.
 
-If a My Loan plan is on the wrong type, open it on Recurring, set **Type** to **My Loan**, and enter the APR from the loan email. A flat **Pay Over Time** fee model will not split principal and interest the same way.
+If a My Loan plan is on the wrong type, open it on Upcoming, set **Type** to **My Loan**, and enter the APR from the loan email. A flat **Pay Over Time** fee model will not split principal and interest the same way.
 
 ### Total paid looks twice as high as I actually sent
 
@@ -99,9 +99,9 @@ Words like **autopay** in a merchant description (VERIZON \*AUTOPAY, T‑MOBILE 
 
 Statement periods clamp to the length of each month, so February closes on the 28th (29th in a leap year).
 
-### Phone or electric bill doesn’t show on Recurring
+### Phone or electric bill doesn’t show on Upcoming
 
-Auto-detect looks for the **same amount** on a schedule, so a bill that changes each month may be missing. Open one of those charges → **Recurring** → **Monthly** (or **Yearly**) → **Save**. The Recurring tab groups that merchant even when the amount varies. **Not recurring** on a single charge hides only that row; **Not Recurring** on the Recurring tab hides the whole vendor.
+Auto-detect looks for the **same amount** on a schedule, so a bill that changes each month may be missing. Open one of those charges → **Recurring** → **Monthly** (or **Yearly**) → **Save**. The Upcoming tab groups that merchant even when the amount varies. **Not recurring** on a single charge hides only that row; **Not a recurring bill** on the Upcoming tab hides the whole vendor.
 
 ## Total Income looks too high
 
@@ -117,7 +117,15 @@ After an update improves categories, use **Sync → Full re-sync** to apply them
 
 ## Apple Card
 
-Apple Card cannot be linked. Plaid does not sync it.
+Plaid can't link Apple Card, so Budget Magi reads it from Wallet. On your iPhone, open **Settings → Connect Apple Card** and allow access when Wallet asks. The card then shows on Accounts with its balance, limit, minimum, and due date, and its transactions arrive each time you **Sync**.
+
+- The option doesn't appear on iPad or Mac, because Wallet shares this data only on iPhone.
+- If you tap Don't Allow, turn it back on in iPhone **Settings → Privacy & Security → Wallet**.
+- A payment to Apple Card from a linked bank is matched to the card's own payment line, so it isn't counted as spending.
+- Monthly installments show as **Installment** and aren't counted again as spending.
+- The balance is everything you owe on the card, including what's left on monthly installments. Wallet's own Card Balance leaves installments out, and Wallet doesn't tell apps how much of the total they are, so the two numbers differ by your remaining installments.
+- A bank line that says only PAYMENT becomes a card payment when it matches an Apple Card payment to the cent, even if you had given that line a category. A round amount like $100.00 keeps your category.
+- Apple Card Family participants aren't supported by Wallet's data sharing.
 
 ## Welcome screen
 

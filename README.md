@@ -23,16 +23,17 @@ Use the TestFlight build to try new features and report bugs before a public App
 
 ## What you get
 
-- **Transactions** — every charge and paycheck in one list. Fix categories. Sync when you want.
+- **Home** — this month at a glance, cash and card balances, and what's due next. Sync when you want.
+- **Accounts** — every charge and paycheck in one list, plus each card and bank account. Fix categories.
 - **Accounts** — cards, checking, and savings: balances, utilization, bills coming due.
 - **Budget** — a monthly cap and category limits against real spend.
-- **Recurring** — subscriptions and repeating bills, with next-charge dates.
+- **Upcoming** — card payments coming due, subscriptions and repeating bills, on a calendar.
 - **Ask** — on-device AI that looks up your numbers, builds a budget or a card payoff plan, and fixes categories when you tell it what a charge is. It runs on Apple Intelligence, so your questions and data stay on the phone.
 - **Widgets** — Total Spend, spend by category, and cash balances on the Home Screen.
 
 ## Your data stays on the phone
 
-Bank passwords are entered only in **Plaid’s** sign-in screen. Access tokens and your Plaid secret live in the iPhone Keychain. Transactions live in SwiftData on this device (widgets read the same store). Optional encrypted backup if you want a copy you control.
+Bank passwords are entered only in **Plaid’s** sign-in screen. Apple Card comes straight from Wallet on your iPhone, with your permission. Access tokens and your Plaid secret live in the iPhone Keychain. Transactions live in SwiftData on this device (widgets read the same store). Optional encrypted backup if you want a copy you control.
 
 A free [Plaid](https://dashboard.plaid.com) account is enough to start (Sandbox uses fake test banks).
 

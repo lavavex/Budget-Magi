@@ -3,7 +3,7 @@
 //  Finance Wizard
 //
 //  User-chosen display names for cards / payment methods.
-//  Keys: "account:<plaid account_id>" or "method:<raw payment method string>".
+//  Keys: "account:<plaid account_id>", "card:<bank>|<last four>", or "method:<raw payment method string>".
 //
 
 import Foundation
@@ -21,6 +21,24 @@ enum CardLabelStore {
         fallback: String
     ) -> String {
         if let custom = getLabel(key: accountKey(accountId)), !custom.isEmpty {
+            return custom
+        }
+        return fallback
+    }
+
+    /// Preferred label for a linked account. Relinking a bank gives every account a new id, so
+    /// the bank and last four are a second key that carries the nickname over.
+    static func label(
+        accountId: String,
+        institution: String,
+        mask: String?,
+        fallback: String
+    ) -> String {
+        if let custom = getLabel(key: accountKey(accountId)), !custom.isEmpty {
+            return custom
+        }
+        if let key = cardKey(institution: institution, mask: mask),
+           let custom = getLabel(key: key), !custom.isEmpty {
             return custom
         }
         return fallback
@@ -73,11 +91,51 @@ enum CardLabelStore {
         }
     }
 
+    /// Save or clear a nickname for an account, under its id and under its bank and last four.
+    static func setLabel(_ name: String?, accountId: String, institution: String, mask: String?) {
+        setLabel(name, accountId: accountId)
+        guard let key = cardKey(institution: institution, mask: mask) else { return }
+        let trimmed = name?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        if trimmed.isEmpty {
+            removeLabel(key: key)
+        } else {
+            setLabelValue(trimmed, key: key)
+        }
+    }
+
+    /// Copies nicknames saved before the bank-and-last-four key existed, so they also survive
+    /// a relink. Never overwrites a name already stored under that key.
+    static func backfillCardKeys(_ accounts: [(accountId: String, institution: String, mask: String?)]) {
+        var map = labelMap()
+        var changed = false
+        for account in accounts {
+            guard let key = cardKey(institution: account.institution, mask: account.mask),
+                  map[key] == nil,
+                  let name = map[accountKey(account.accountId)], !name.isEmpty else { continue }
+            map[key] = name
+            changed = true
+        }
+        if changed { persist(map) }
+    }
+
+    /// Restores a stored entry under its own key, whatever kind it is.
+    static func setRawLabel(_ name: String, key: String) {
+        guard key.hasPrefix("account:") || key.hasPrefix("method:") || key.hasPrefix("card:") else { return }
+        setLabelValue(name, key: key)
+    }
+
     // MARK: - Storage
 
     /// Prefix keys so account ids and method strings never collide in one map.
     private static func accountKey(_ id: String) -> String { "account:\(id)" }
     private static func methodKey(_ method: String) -> String { "method:\(method)" }
+
+    /// Nil without a bank name or last four, since either alone matches several accounts.
+    static func cardKey(institution: String, mask: String?) -> String? {
+        let bank = institution.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        guard !bank.isEmpty, let mask, !mask.isEmpty else { return nil }
+        return "card:\(bank)|\(mask)"
+    }
 
     /// In-memory copy of the nickname map.
     /// PERF: `labelMap()` used to hit `UserDefaults.dictionary(forKey:)` on every lookup, and

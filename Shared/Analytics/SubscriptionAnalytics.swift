@@ -252,6 +252,14 @@ enum SubscriptionAnalytics {
         return merged
     }
 
+    /// Whether a charge belongs to a detected bill, using the same rule as detection: the same
+    /// vendor, or a bill whose longer name starts with it ("ACME Internet" under "ACME").
+    nonisolated static func charge(title: String, category: String, belongsTo vendorKey: String) -> Bool {
+        let vendor = normalizeVendor(title)
+        if vendor == vendorKey { return true }
+        return isMeteredBillCategory(category) && vendor.hasPrefix(vendorKey + " ")
+    }
+
     /// Utilities and insurance change price, so the newest charge is what it costs now.
     nonisolated private static func meteredBillCandidate(
         key: String,
@@ -304,6 +312,15 @@ enum SubscriptionAnalytics {
 
     /// Past its usual date by about half a cycle, so it may have ended or moved to another
     /// account. Still listed until `isActive` gives up on it.
+    /// When a bill should charge next: one cadence after its last charge.
+    nonisolated static func nextChargeDate(for candidate: SubscriptionCandidate, calendar: Calendar = .current) -> Date? {
+        switch candidate.cadence {
+        case .weekly: calendar.date(byAdding: .day, value: 7, to: candidate.lastDate)
+        case .monthly: calendar.date(byAdding: .month, value: 1, to: candidate.lastDate)
+        case .yearly: calendar.date(byAdding: .year, value: 1, to: candidate.lastDate)
+        }
+    }
+
     nonisolated static func isOverdue(_ candidate: SubscriptionCandidate, now: Date = Date()) -> Bool {
         let days: Int = {
             switch candidate.cadence {

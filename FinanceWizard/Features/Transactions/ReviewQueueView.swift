@@ -18,6 +18,27 @@ struct ReviewQueueView: View {
     // Optional filter: nil means “show all reasons.”
     @State private var filter: ReviewQueueReason? = nil
     @State private var statusMessage: String?
+    @State private var statusKind = StatusKind.done
+
+    private enum StatusKind {
+        case done, info, failed
+
+        var systemImage: String {
+            switch self {
+            case .done: "checkmark.circle.fill"
+            case .info: "info.circle"
+            case .failed: "exclamationmark.triangle.fill"
+            }
+        }
+
+        var color: Color {
+            switch self {
+            case .done: .green
+            case .info: .secondary
+            case .failed: .red
+            }
+        }
+    }
     /// Model suggestions by merchant title. Nothing changes until the user applies them.
     @State private var suggestions: [String: String] = [:]
     @State private var isSuggesting = false
@@ -59,8 +80,8 @@ struct ReviewQueueView: View {
 
             if let statusMessage {
                 Section {
-                    Label(statusMessage, systemImage: "checkmark.circle.fill")
-                        .foregroundStyle(.green)
+                    Label(statusMessage, systemImage: statusKind.systemImage)
+                        .foregroundStyle(statusKind.color)
                         .font(.caption)
                 }
             }
@@ -77,7 +98,7 @@ struct ReviewQueueView: View {
                             }
                     }
                     if !isSuggesting, !suggestions.isEmpty {
-                        Button("Apply \(suggestions.count) Suggestions") { applySuggestions() }
+                        Button(suggestions.count == 1 ? "Apply 1 suggestion" : "Apply \(suggestions.count) suggestions") { applySuggestions() }
                     }
                 } header: {
                     Text("Suggested categories")
@@ -144,7 +165,10 @@ struct ReviewQueueView: View {
             ) else { continue }
             if name != row.category { suggestions[row.title] = name }
         }
-        if suggestions.isEmpty { statusMessage = "No better categories found." }
+        if suggestions.isEmpty {
+            statusKind = .info
+            statusMessage = "No better categories found."
+        }
     }
 
     private func applySuggestions() {
@@ -159,7 +183,7 @@ struct ReviewQueueView: View {
         }
         let count = suggestions.count
         suggestions = [:]
-        save("Updated \(count) merchants")
+        save(count == 1 ? "Updated 1 merchant" : "Updated \(count) merchants")
     }
 
     // MARK: - Mutations (write to the model, then save)
@@ -205,12 +229,14 @@ struct ReviewQueueView: View {
         do {
             try modelContext.save()
             WidgetCenter.shared.reloadAllTimelines()
+            statusKind = .done
             statusMessage = message
             Task {
                 try? await Task.sleep(nanoseconds: 1_800_000_000)
                 statusMessage = nil
             }
         } catch {
+            statusKind = .failed
             statusMessage = error.localizedDescription
         }
     }

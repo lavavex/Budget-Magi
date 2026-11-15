@@ -111,6 +111,17 @@ enum SnapshotPeriod: String, CaseIterable, Identifiable, Sendable {
         }
     }
 
+    /// The filter label for use mid-sentence: "this month", but "June 2026" keeps its capital.
+    func sentenceLabel(
+        referenceDate: Date = Date(),
+        now: Date = Date(),
+        calendar: Calendar = .current
+    ) -> String {
+        let label = filterLabel(referenceDate: referenceDate, now: now, calendar: calendar)
+        guard label.hasPrefix("This ") || label.hasPrefix("Last ") || label == "All time" else { return label }
+        return label.prefix(1).lowercased() + label.dropFirst()
+    }
+
     /// Header label for the active filter (e.g. "June 2026", "This month", "Jul 20–26").
     func filterLabel(
         referenceDate: Date = Date(),

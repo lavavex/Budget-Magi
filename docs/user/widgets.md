@@ -27,7 +27,7 @@ On **Total Spend**, hiding a card only changes the **breakdown**. The big total 
 
 | Message | What to do |
 |---------|------------|
-| Open the app and tap Sync | No data yet — Sync in **Transactions** |
+| Open the app and tap Sync | No data yet — Sync on **Home** |
 | No spend this week/month | Nothing in that period, or change the widget’s time range |
 
 How widgets are built: [Developer widgets](../dev/widgets.md).

@@ -8,6 +8,40 @@
 
 import SwiftUI
 
+/// One step back or forward through weeks or months, without opening the period menu.
+struct PeriodStepper: View {
+    let period: SnapshotPeriod
+    @Binding var referenceDate: Date
+
+    private var component: Calendar.Component { period == .week ? .weekOfYear : .month }
+
+    private var canGoForward: Bool {
+        !Calendar.current.isDate(referenceDate, equalTo: Date(), toGranularity: component)
+            && referenceDate < Date()
+    }
+
+    var body: some View {
+        HStack {
+            Button("Previous", systemImage: "chevron.left") { step(-1) }
+            Spacer()
+            Text(period.filterLabel(referenceDate: referenceDate))
+                .font(.subheadline.weight(.semibold))
+            Spacer()
+            Button("Next", systemImage: "chevron.right") { step(1) }
+                .disabled(!canGoForward)
+        }
+        .labelStyle(.iconOnly)
+        .buttonStyle(.borderless)
+        // The separator would otherwise start at the centered label, halfway across the row.
+        .alignmentGuide(.listRowSeparatorLeading) { _ in 0 }
+    }
+
+    private func step(_ amount: Int) {
+        guard let moved = Calendar.current.date(byAdding: component, value: amount, to: referenceDate) else { return }
+        referenceDate = period == .month ? TransactionAnalytics.monthStart(for: moved) : moved
+    }
+}
+
 /// Toolbar menu for choosing SnapshotPeriod (week / month / all) and optionally which month.
 struct PeriodFilterMenu: View {
     @Binding var period: SnapshotPeriod

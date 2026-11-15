@@ -87,15 +87,25 @@ final class BankAccount {
         return name
     }
 
-    /// User nickname when set, otherwise Plaid label.
+    /// A name for screens when there's no nickname. Banks often call every card "CREDIT CARD",
+    /// which names nothing, so those read as the bank and last four instead. `plaidDisplayName`
+    /// stays as it is, because transactions store it as their payment method.
+    var defaultDisplayName: String {
+        let generic = ["credit card", "card", "creditcard"]
+        guard generic.contains(name.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()),
+              let mask, !mask.isEmpty, !institutionName.isEmpty else { return plaidDisplayName }
+        return "\(institutionName) ···\(mask)"
+    }
+
+    /// User nickname when set, otherwise a readable default.
     var displayName: String {
-        CardLabelStore.label(accountId: accountId, fallback: plaidDisplayName)
+        CardLabelStore.label(accountId: accountId, institution: institutionName, mask: mask, fallback: defaultDisplayName)
     }
 
     /// Subtitle under the nickname (institution / original Plaid name).
     /// Omits last-four when the display name already ends with it (product pick → "Card 1234").
     var subtitleDetail: String {
-        let customLabel = CardLabelStore.label(accountId: accountId, fallback: plaidDisplayName)
+        let customLabel = displayName
         var parts: [String] = []
         if !institutionName.isEmpty {
             parts.append(institutionName)
@@ -109,7 +119,7 @@ final class BankAccount {
             }
         }
         // If user renamed (e.g. product + last 4), also show original Plaid account name
-        if customLabel != plaidDisplayName {
+        if customLabel != defaultDisplayName {
             parts.insert(plaidDisplayName, at: 0)
         }
         return parts.joined(separator: " · ")
@@ -163,6 +173,12 @@ final class BankAccount {
             || cashApr != nil
             || balanceTransferApr != nil
             || isOverdue == true
+    }
+
+    /// The stored due date has gone by but the bank hasn't said the card is overdue, which
+    /// usually means the payment was made and the next due date arrives with the next Sync.
+    var dueDateIsStale: Bool {
+        isOverdue != true && (daysUntilDue ?? 0) < 0
     }
 
     /// Days until next payment due (negative if past due).

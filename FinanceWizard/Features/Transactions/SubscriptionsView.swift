@@ -2,8 +2,8 @@
 //  SubscriptionsView.swift
 //  Finance Wizard
 //
-//  Recurring charges tab: detect subscriptions and variable bills,
-//  mark Not Recurring vs Cancelled.
+//  Upcoming tab: card payments coming due, detected subscriptions and variable bills,
+//  and marking a bill not recurring or cancelled.
 //
 
 import SwiftUI
@@ -19,16 +19,18 @@ struct SubscriptionsView: View {
     @State private var isScanning = true
     @State private var isSpinning = false
     @State private var workFinished = false
-    @State private var workLog: [String] = []
     @State private var workStartedAt: Date?
     @State private var path = NavigationPath()
     @State private var selectedDay: DateComponents? = nil
+    /// A bill and the override waiting on the confirmation dialog.
+    @State private var pendingOverride: (item: SubscriptionCandidate, value: String)?
+    @State private var workTitle = ""
 
     @Environment(\.modelContext) private var modelContext
 
     private var monthlySummaryLabel: String {
-        if isScanning { return "Scanning..." }
-        return "\(candidates.count) bills"
+        if isScanning { return "Scanning…" }
+        return current.count == 1 ? "1 bill" : "\(current.count) bills"
     }
 
     private var issuerPlans: [PayoffPlan] {
@@ -41,13 +43,70 @@ struct SubscriptionsView: View {
             .sorted { $0.installmentTotal > $1.installmentTotal }
     }
 
+    /// Ended bills, most recently charged first. Months of old detections pile up here, so the
+    /// tab shows a few and the rest are one tap away.
+    private var endedBills: [SubscriptionCandidate] {
+        ended.sorted { $0.lastDate > $1.lastDate }
+    }
+
+    private var endedCount: Int { ended.count + endedPayoffPlans.count }
+
+    private static let endedShown = 3
+    private static let allEndedID = "ended:all"
+
+    private func endedPlanLink(_ plan: PayoffPlan) -> some View {
+        NavigationLink {
+            PayoffPlanEditorView(existing: plan)
+        } label: {
+            PayoffPlanRowView(plan: plan, cardDueDate: cardDueDate(for: plan))
+        }
+    }
+
+    /// Everything that ended: bills you marked cancelled or that stopped charging, and finished plans.
+    private var allEndedList: some View {
+        List {
+            if !endedBills.isEmpty {
+                Section {
+                    ForEach(endedBills) { item in
+                        NavigationLink(value: item.id) {
+                            subscriptionRow(item)
+                        }
+                    }
+                } header: {
+                    Text("Bills")
+                } footer: {
+                    Text("Bills you marked cancelled, and ones that stopped charging.")
+                }
+            }
+            if !endedPayoffPlans.isEmpty {
+                Section("Pay-off plans") {
+                    ForEach(endedPayoffPlans, id: \.planId) { plan in
+                        endedPlanLink(plan)
+                    }
+                }
+            }
+        }
+        .navigationTitle("Ended")
+        .navigationBarTitleDisplayMode(.inline)
+    }
+
     private var endedPayoffPlans: [PayoffPlan] {
         payoffPlans.filter { !$0.isActive }.sorted { $0.updatedAt > $1.updatedAt }
     }
 
+    /// Bills charging on schedule. One that skipped its date is listed apart and not counted,
+    /// the same way Ask treats it.
+    private var current: [SubscriptionCandidate] {
+        candidates.filter { !SubscriptionAnalytics.isOverdue($0) }
+    }
+
+    private var lapsed: [SubscriptionCandidate] {
+        candidates.filter { SubscriptionAnalytics.isOverdue($0) }
+    }
+
     /// Cash besides the card bill: subscriptions + extra principal plans.
     private var extraMonthly: Double {
-        candidates.reduce(0) { $0 + $1.estimatedMonthly }
+        current.reduce(0) { $0 + $1.estimatedMonthly }
             + extraPayoffPlans.reduce(0) { $0 + $1.monthlyPayment }
     }
 
@@ -60,11 +119,12 @@ struct SubscriptionsView: View {
         payoffPlans.filter(\.isActive).sorted { $0.installmentTotal > $1.installmentTotal }
     }
     
+    /// Every upcoming charge for the next year, so paging the calendar ahead still shows bills.
     private var chargeDays: Set<DateComponents> {
         var days: Set<DateComponents> = []
-        for tx in candidates {
-            if let next = nextChargeDate(for: tx) {
-                days.insert(Calendar.current.dateComponents([.year, .month, .day], from: next))
+        for item in current {
+            for date in upcomingChargeDates(for: item) {
+                days.insert(Calendar.current.dateComponents([.year, .month, .day], from: date))
             }
         }
         for plan in activePayoffPlans {
@@ -85,169 +145,68 @@ struct SubscriptionsView: View {
                 && parts.day == selectedDay?.day
         }
     }
+    /// Same bills as the calendar's dots, so a marked day never opens empty.
     private var chargesOnSelectedDay: [SubscriptionCandidate] {
-        var matches: [SubscriptionCandidate] = []
-        if selectedDay == nil {
-            return matches
-        }
-        else {
-            for item in candidates {
-                if let next = nextChargeDate( for: item ) {
-                    let parts = Calendar.current.dateComponents([.year, .month, .day], from: next)
-                    if parts.year == selectedDay?.year
-                        && parts.month == selectedDay?.month
-                        && parts.day == selectedDay?.day {
-                        matches.append(item)
-                    }
-                }
+        guard let selectedDay else { return [] }
+        return current.filter { item in
+            upcomingChargeDates(for: item).contains { date in
+                let parts = Calendar.current.dateComponents([.year, .month, .day], from: date)
+                return parts.year == selectedDay.year && parts.month == selectedDay.month && parts.day == selectedDay.day
             }
         }
-        return matches
     }
+    // MARK: Card payments
+
+    /// Cards with a payment coming, soonest first.
+    private var cardsDue: [BankAccount] {
+        AccountsBoard.upcomingCardPayments(accounts)
+    }
+
+    private var cardMinimumsDue: Double {
+        cardsDue.compactMap(\.minimumPaymentAmount).reduce(0, +)
+    }
+
+    private var cardDueDays: Set<DateComponents> {
+        Set(cardsDue.compactMap(\.nextPaymentDueDate).map { Calendar.current.dateComponents([.year, .month, .day], from: $0) })
+    }
+
+    private var cardsDueOnSelectedDay: [BankAccount] {
+        guard let selectedDay else { return [] }
+        return cardsDue.filter { account in
+            guard let due = account.nextPaymentDueDate else { return false }
+            let parts = Calendar.current.dateComponents([.year, .month, .day], from: due)
+            return parts.year == selectedDay.year && parts.month == selectedDay.month && parts.day == selectedDay.day
+        }
+    }
+
+    private func cardDueLink(_ account: BankAccount) -> some View {
+        UpcomingCardLink(
+            account: account,
+            methods: Set(transactions.map(TransactionAnalytics.cardName(for:))),
+            plans: Array(payoffPlans)
+        )
+    }
+
+    // MARK: Layout
+
+    @Environment(\.appWidth) private var appWidth
+
+    /// Two equal columns, calendar on the left and the lists on the right, when the window is
+    /// wide enough for both, like the Duo's inner screen turned sideways.
+    private var twoColumns: Bool { appWidth >= LayoutWidth.twoColumn }
+
     var body: some View {
         NavigationStack(path: $path) {
-            List {
-                Section {
-                    RecurringCalendarView(chargeDays: chargeDays, selectedDay: $selectedDay)
-                    
-                        .frame(minHeight: 240)
-                        .listRowInsets(EdgeInsets())
-                        .listRowBackground(Color.clear)
-                        .padding(.vertical, -16)
-                }
-                    if selectedDay != nil {
-                        Section {
-                        if chargesOnSelectedDay.isEmpty && payoffOnSelectedDay.isEmpty {
-                            VStack{
-                                Image(systemName: "calendar")
-                                    .font(.largeTitle)
-                                    .padding(.bottom, 8)
-                                Text("No Recurring Charges on this Day")
-                                    .multilineTextAlignment(.center)
-                            }
-                            .foregroundStyle(.secondary)
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 8)
-                                
-                        }
-                        else {
-                        ForEach(payoffOnSelectedDay, id: \.planId) { plan in
-                            NavigationLink {
-                                PayoffPlanEditorView(existing: plan)
-                            } label: {
-                                PayoffPlanRowView(plan: plan, cardDueDate: cardDueDate(for: plan))
-                            }
-                        }
-                        ForEach(chargesOnSelectedDay) { item in
-                            NavigationLink(value: item.id) {
-                                subscriptionRow(item)
-                            }
-                            }
-                        }
-                    }
-                }
-                Section {
-                    HStack {
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text("Extra bills")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                            MoneyText(extraMonthly)
-                                .font(.title2.weight(.bold))
-                        }
-                        Spacer()
-                        VStack(alignment: .trailing, spacing: 2) {
-                            Text(monthlySummaryLabel)
-                                .font(.subheadline)
-                                .foregroundStyle(.secondary)
-                            if onCardMonthly > 0.005 {
-                                Text("+\(onCardMonthly.formatted(.currency(code: "USD"))) on cards")
-                                    .font(.caption2)
-                                    .foregroundStyle(.tertiary)
-                            }
-                        }
-                    }
-                    .padding(.vertical, 4)
-                } footer: {
-                    Text("Extra bills are subscriptions and other charges besides the card payment. Loans and installments are already in the card minimum.")
-                }
-
-                if !issuerPlans.isEmpty {
-                    Section {
-                        ForEach(issuerPlans, id: \.planId) { plan in
-                            NavigationLink {
-                                PayoffPlanEditorView(existing: plan)
-                            } label: {
-                                PayoffPlanRowView(plan: plan, cardDueDate: cardDueDate(for: plan))
-                            }
-                        }
-                    } header: {
-                        Text("On your cards")
-                    } footer: {
-                        Text("Due with the statement. Included in the card minimum — not extra cash.")
-                    }
-                }
-
-                if !extraPayoffPlans.isEmpty {
-                    Section {
-                        ForEach(extraPayoffPlans, id: \.planId) { plan in
-                            NavigationLink {
-                                PayoffPlanEditorView(existing: plan)
-                            } label: {
-                                PayoffPlanRowView(plan: plan, cardDueDate: cardDueDate(for: plan))
-                            }
-                        }
-                    } header: {
-                        Text("Pay off extra")
-                    }
-                }
-
-                Section {
-                    if isScanning && candidates.isEmpty {
-                        ProgressView("Scanning...")
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 12)
-                            .listRowBackground(Color.clear)
-                    } else if candidates.isEmpty {
-                        ContentUnavailableView(
-                            "No repeating bills yet",
-                            systemImage: "repeat.circle",
-                            description: Text("Subscriptions and marked monthly bills show up here.")
-                        )
-                        .listRowBackground(Color.clear)
-                    } else {
-                        ForEach(candidates) { item in
-                            NavigationLink(value: item.id) {
-                                subscriptionRow(item)
-                            }
-                        }
-                    }
-                } header: {
-                    Text("Bills")
-                }
-
-                if !ended.isEmpty || !endedPayoffPlans.isEmpty {
-                    Section {
-                        ForEach(ended) { item in
-                            NavigationLink(value: item.id) {
-                                subscriptionRow(item)
-                            }
-                        }
-                        ForEach(endedPayoffPlans, id: \.planId) { plan in
-                            NavigationLink {
-                                PayoffPlanEditorView(existing: plan)
-                            } label: {
-                                PayoffPlanRowView(plan: plan, cardDueDate: cardDueDate(for: plan))
-                            }
-                        }
-                    } header: {
-                        Text("Ended")
-                    }
-                }
+            TwoColumnList {
+                calendarSections
+            } right: {
+                billSections
             }
-            .navigationTitle("Recurring Charges")
+            .navigationTitle("Upcoming")
             .navigationDestination(for: String.self) { id in
-                if let item = candidates.first(where: { $0.id == id }) {
+                if id == Self.allEndedID {
+                    allEndedList
+                } else if let item = candidates.first(where: { $0.id == id }) {
                     recurringDetail(item, showCancelledButton: true)
                 } else if let item = ended.first(where: { $0.id == id }) {
                     recurringDetail(item, showCancelledButton: false)
@@ -266,36 +225,250 @@ struct SubscriptionsView: View {
         .animation(.easeOut(duration: 0.4), value: isSpinning)
     }
 
+    @ViewBuilder
+    private var calendarSections: some View {
+        if twoColumns {
+            // In a card like the column beside it, so both start on the same line.
+            Section {
+                calendar
+                    .listRowInsets(EdgeInsets(top: 4, leading: 8, bottom: 4, trailing: 8))
+            } header: {
+                Text("Calendar")
+            } footer: {
+                calendarKey
+            }
+        } else {
+            Section {
+                calendar
+                    .listRowInsets(EdgeInsets())
+                    .listRowBackground(Color.clear)
+                    .padding(.vertical, -16)
+            } footer: {
+                calendarKey
+            }
+        }
+        if let selectedDay {
+            Section {
+                if chargesOnSelectedDay.isEmpty && payoffOnSelectedDay.isEmpty && cardsDueOnSelectedDay.isEmpty {
+                    Text("Nothing due on this day.")
+                        .foregroundStyle(.secondary)
+                } else {
+                    ForEach(cardsDueOnSelectedDay, id: \.accountId) { account in
+                        cardDueLink(account)
+                    }
+                    ForEach(payoffOnSelectedDay, id: \.planId) { plan in
+                        NavigationLink {
+                            PayoffPlanEditorView(existing: plan)
+                        } label: {
+                            PayoffPlanRowView(plan: plan, cardDueDate: cardDueDate(for: plan))
+                        }
+                    }
+                    ForEach(chargesOnSelectedDay) { item in
+                        NavigationLink(value: item.id) {
+                            subscriptionRow(item)
+                        }
+                    }
+                }
+            } header: {
+                HStack {
+                    Text(Calendar.current.date(from: selectedDay)?.formatted(date: .abbreviated, time: .omitted) ?? "Selected day")
+                    Spacer()
+                    Button("Clear") { self.selectedDay = nil }
+                        .font(.subheadline)
+                        .textCase(nil)
+                }
+            }
+        }
+    }
+
+    private var calendar: some View {
+        RecurringCalendarView(chargeDays: chargeDays, cardDueDays: cardDueDays, selectedDay: $selectedDay)
+            .frame(minHeight: 240)
+    }
+
+    private var calendarKey: some View {
+        HStack(spacing: 14) {
+            Label("Card payment", systemImage: "circle.fill")
+                .labelStyle(DotLabelStyle(color: .orange))
+            Label("Bill", systemImage: "circle.fill")
+                .labelStyle(DotLabelStyle(color: .secondary))
+        }
+        .font(.caption)
+    }
+
+    @ViewBuilder
+    private var billSections: some View {
+        Section {
+            HStack(alignment: .top) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Card minimums")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    MoneyText(cardMinimumsDue)
+                        .font(.title2.weight(.bold))
+                    Text(cardsDue.count == 1 ? "1 card due" : "\(cardsDue.count) cards due")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                VStack(alignment: .trailing, spacing: 2) {
+                    Text("Extra bills a month")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    MoneyText(extraMonthly)
+                        .font(.title2.weight(.bold))
+                    Text(monthlySummaryLabel)
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                }
+                .frame(maxWidth: .infinity, alignment: .trailing)
+            }
+            .padding(.vertical, 4)
+        } header: {
+            Text("Summary")
+        } footer: {
+            Text(onCardMonthly > 0.005
+                 ? "Extra bills are subscriptions and other charges besides card payments. \(onCardMonthly.formatted(.currency(code: "USD"))) a month of loans and installments is already in the card minimums."
+                 : "Extra bills are subscriptions and other charges besides card payments.")
+        }
+
+        if !cardsDue.isEmpty {
+            Section {
+                ForEach(cardsDue, id: \.accountId) { account in
+                    cardDueLink(account)
+                }
+            } header: {
+                Text("Cards due")
+            }
+        }
+
+        if !issuerPlans.isEmpty {
+            Section {
+                ForEach(issuerPlans, id: \.planId) { plan in
+                    NavigationLink {
+                        PayoffPlanEditorView(existing: plan)
+                    } label: {
+                        PayoffPlanRowView(plan: plan, cardDueDate: cardDueDate(for: plan))
+                    }
+                }
+            } header: {
+                Text("On your cards")
+            } footer: {
+                Text("Due with the statement. Included in the card minimum — not extra cash.")
+            }
+        }
+
+        if !extraPayoffPlans.isEmpty {
+            Section {
+                ForEach(extraPayoffPlans, id: \.planId) { plan in
+                    NavigationLink {
+                        PayoffPlanEditorView(existing: plan)
+                    } label: {
+                        PayoffPlanRowView(plan: plan, cardDueDate: cardDueDate(for: plan))
+                    }
+                }
+            } header: {
+                Text("Pay off extra")
+            }
+        }
+
+        Section {
+            if isScanning && candidates.isEmpty {
+                ProgressView("Scanning…")
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 12)
+                    .listRowBackground(Color.clear)
+            } else if current.isEmpty {
+                ContentUnavailableView(
+                    "No repeating bills yet",
+                    systemImage: "repeat.circle",
+                    description: Text("Subscriptions and marked monthly bills show up here.")
+                )
+                .listRowBackground(Color.clear)
+            } else {
+                ForEach(current) { item in
+                    NavigationLink(value: item.id) {
+                        subscriptionRow(item)
+                    }
+                }
+            }
+        } header: {
+            Text("Bills")
+        }
+
+        if !lapsed.isEmpty {
+            Section {
+                ForEach(lapsed) { item in
+                    NavigationLink(value: item.id) {
+                        subscriptionRow(item)
+                    }
+                }
+            } header: {
+                Text("Hasn't charged lately")
+            } footer: {
+                Text("These missed their usual date, so they aren't counted in Extra bills. If one has ended, open it and mark it cancelled.")
+            }
+        }
+
+        if endedCount > 0 {
+            Section {
+                ForEach(endedBills.prefix(Self.endedShown)) { item in
+                    NavigationLink(value: item.id) {
+                        subscriptionRow(item)
+                    }
+                }
+                if endedBills.count < Self.endedShown {
+                    ForEach(endedPayoffPlans.prefix(Self.endedShown - endedBills.count), id: \.planId) { plan in
+                        endedPlanLink(plan)
+                    }
+                }
+                if endedCount > Self.endedShown {
+                    // By value, like the bills inside it, so they all open on the same path.
+                    NavigationLink(value: Self.allEndedID) {
+                        Text("See all \(endedCount) ended")
+                    }
+                }
+            } header: {
+                Text("Ended")
+            }
+        }
+    }
+
     private func recurringDetail(_ item: SubscriptionCandidate, showCancelledButton: Bool) -> some View {
         // Skip the expensive charge scan while the overlay is up so each
         // SwiftData write does not rebuild Times Seen + the charge list.
         let matches = isSpinning ? [] : matchingTransactions(for: item)
+        let wasCancelled = matches.contains { $0.subscriptionCadenceOverride == "cancelled" }
         return List {
-            LabeledContent("Cadence", value: item.cadence.displayName)
-            if item.amountVaries {
-                LabeledContent("Amount", value: "Varies")
-            }
-            if !isSpinning {
-                LabeledContent("Times Seen", value: "\(matches.count)")
-            }
-            LabeledContent("Why", value: item.confidenceNote)
-            LabeledContent("Last Charged", value: item.lastDate.formatted(date: .abbreviated, time: .omitted))
-            if let next = nextChargeDate(for: item), next > Date() {
-                LabeledContent("Next Charge", value: next.formatted(date: .abbreviated, time: .omitted))
+            Section {
+                LabeledContent("Repeats", value: item.cadence.displayName)
+                LabeledContent("Amount") {
+                    MoneyText(item.typicalAmount, prefix: item.amountVaries ? "About " : "")
+                }
+                if !isSpinning {
+                    LabeledContent("Charges found", value: "\(matches.count)")
+                }
+                LabeledContent("Last charged", value: item.lastDate.formatted(date: .abbreviated, time: .omitted))
+                if let next = nextChargeDate(for: item), next > Date() {
+                    LabeledContent("Next charge", value: next.formatted(date: .abbreviated, time: .omitted))
+                }
+            } footer: {
+                Text(item.confidenceNote)
             }
             Section {
-                Button("Not Recurring", role: .destructive) {
-                    Task { await markNotRecurring(item) }
-                }
-                .disabled(isSpinning)
-            }
-            if showCancelledButton {
-                Section {
-                    Button("Cancelled", role: .destructive) {
-                        Task { await markEnded(item) }
+                if wasCancelled {
+                    Button("Mark active again") {
+                        Task { await applyOverride(nil, on: item) }
                     }
                     .disabled(isSpinning)
+                } else if showCancelledButton {
+                    Button("It's cancelled") { pendingOverride = (item, "cancelled") }
+                        .disabled(isSpinning)
                 }
+                Button("Not a recurring bill", role: .destructive) { pendingOverride = (item, "none") }
+                    .disabled(isSpinning)
+            } footer: {
+                Text("Cancelled keeps it under Ended. Not a recurring bill hides it from this tab. Either one applies to every charge from \(item.displayVendor).")
             }
             if !isSpinning {
                 Section("Charges") {
@@ -303,13 +476,34 @@ struct SubscriptionsView: View {
                         NavigationLink {
                             TransactionDetailView(transaction: tx)
                         } label: {
-                            TransactionRowView(transaction: tx)
+                            TransactionRowView(
+                                transaction: tx,
+                                account: BankAccount.matching(paymentMethod: tx.paymentMethod, in: accounts)
+                            )
                         }
                     }
                 }
             }
         }
         .navigationTitle(item.displayVendor)
+        .confirmationDialog(
+            pendingOverride?.value == "cancelled"
+                ? "Mark \(item.displayVendor) as cancelled?"
+                : "Stop treating \(item.displayVendor) as a recurring bill?",
+            isPresented: Binding(
+                get: { pendingOverride != nil },
+                set: { if !$0 { pendingOverride = nil } }
+            ),
+            titleVisibility: .visible
+        ) {
+            if let pending = pendingOverride {
+                Button(pending.value == "cancelled" ? "Mark cancelled" : "Not recurring", role: .destructive) {
+                    pendingOverride = nil
+                    Task { await applyOverride(pending.value, on: pending.item) }
+                }
+            }
+            Button("Cancel", role: .cancel) { pendingOverride = nil }
+        }
     }
 
     @ViewBuilder
@@ -338,9 +532,12 @@ struct SubscriptionsView: View {
             VStack(alignment: .trailing, spacing: 2) {
                 MoneyText(item.typicalAmount, prefix: item.amountVaries ? "~" : "")
                     .font(.body.weight(.semibold))
-                MoneyText(item.estimatedMonthly, prefix: "~", suffix: "/mo")
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
+                // A monthly bill's amount already is its monthly cost.
+                if item.cadence != .monthly {
+                    MoneyText(item.estimatedMonthly, prefix: "~", suffix: "/mo")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                }
             }
         }
         .padding(.vertical, 2)
@@ -356,46 +553,16 @@ struct SubscriptionsView: View {
                     Spacer()
                     BundleGIFView(resource: "WorkingOverlay")
                         .frame(width: 240, height: 164)
-                    if workFinished {
-                        Text("Done!")
-                            .font(.headline.weight(.semibold))
-                            .foregroundStyle(.white)
-                    } else {
-                        TimelineView(.periodic(from: .now, by: 0.4)) { context in
-                            let dots = (Int(context.date.timeIntervalSinceReferenceDate / 0.4) % 3) + 1
-                            Text("Working...")
-                                .font(.headline.weight(.semibold))
-                                .hidden()
-                                .overlay {
-                                    Text("Working" + String(repeating: ".", count: dots))
-                                        .font(.headline.weight(.semibold))
-                                        .foregroundStyle(.white)
-                                }
-                        }
-                    }
+                    Text(workFinished ? "Done" : workTitle)
+                        .font(.headline.weight(.semibold))
+                        .foregroundStyle(.white)
+                        .multilineTextAlignment(.center)
                     Spacer()
-                    workLogPanel
                 }
                 .padding(.horizontal, 16)
-                .padding(.bottom, 8)
             }
             .allowsHitTesting(true)
         }
-    }
-
-    private var workLogPanel: some View {
-        VStack(alignment: .leading, spacing: 3) {
-            ForEach(Array(workLog.suffix(8).enumerated()), id: \.offset) { _, line in
-                Text(line)
-                    .font(.system(.caption2, design: .monospaced))
-                    .foregroundStyle(.white.opacity(0.92))
-                    .frame(maxWidth: .infinity, alignment: .leading)
-            }
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(10)
-        .background(.black.opacity(0.4))
-        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
     }
 
     private func cardDueDate(for plan: PayoffPlan) -> Date? {
@@ -443,8 +610,8 @@ struct SubscriptionsView: View {
         transactions
             .filter { tx in
                 if tx.isDeclaredNotSubscription { return false }
-                let vendor = SubscriptionAnalytics.normalizeVendor(tx.title)
-                if vendor != item.normalizedVendor { return false }
+                guard SubscriptionAnalytics.charge(title: tx.title, category: tx.category, belongsTo: item.normalizedVendor)
+                else { return false }
                 // User-marked or variable bills (phone, electric): amount may change.
                 if item.isUserDeclared || item.amountVaries { return true }
                 let tol = max(0.25, item.typicalAmount * 0.01)
@@ -454,75 +621,87 @@ struct SubscriptionsView: View {
     }
 
     private func nextChargeDate(for item: SubscriptionCandidate) -> Date? {
+        SubscriptionAnalytics.nextChargeDate(for: item)
+    }
+
+    private func chargeDate(for item: SubscriptionCandidate, step: Int) -> Date? {
         let cal = Calendar.current
         switch item.cadence {
         case .weekly:
-            return cal.date(byAdding: .day,  value: 7, to: item.lastDate)
+            return cal.date(byAdding: .day, value: 7 * step, to: item.lastDate)
         case .monthly:
-            return cal.date(byAdding: .month, value: 1, to: item.lastDate)
+            return cal.date(byAdding: .month, value: step, to: item.lastDate)
         case .yearly:
-            return cal.date(byAdding: .year, value: 1, to: item.lastDate)
+            return cal.date(byAdding: .year, value: step, to: item.lastDate)
         }
     }
 
-    /// Recurring radar: `"none"` hides the vendor; `"cancelled"` keeps it under Ended.
-    @MainActor
-    private func markNotRecurring(_ item: SubscriptionCandidate) async {
-        await applyOverride("none", on: item)
+    /// Projected charges from today through a year out.
+    private func upcomingChargeDates(for item: SubscriptionCandidate) -> [Date] {
+        let today = Calendar.current.startOfDay(for: Date())
+        guard let horizon = Calendar.current.date(byAdding: .year, value: 1, to: today) else { return [] }
+        var dates: [Date] = []
+        var step = 1
+        while let date = chargeDate(for: item, step: step), date <= horizon, step <= 60 {
+            if date >= today { dates.append(date) }
+            step += 1
+        }
+        return dates
     }
 
+    /// Recurring radar: `"none"` hides the vendor, `"cancelled"` keeps it under Ended, and nil
+    /// clears either so detection decides again.
     @MainActor
-    private func markEnded(_ item: SubscriptionCandidate) async {
-        await applyOverride("cancelled", on: item)
-    }
-
-    @MainActor
-    private func applyOverride(_ value: String, on item: SubscriptionCandidate) async {
-        workLog = []
+    private func applyOverride(_ value: String?, on item: SubscriptionCandidate) async {
         workStartedAt = Date()
         workFinished = false
+        workTitle = switch value {
+        case "cancelled": "Marking \(item.displayVendor) cancelled…"
+        case "none": "Removing \(item.displayVendor) from Upcoming…"
+        default: "Marking \(item.displayVendor) active…"
+        }
         isSpinning = true
         defer {
             isSpinning = false
             workFinished = false
         }
-        await logWork("Cancelled “\(item.displayVendor)”")
-        await logWork("Finding matching charges")
         let matches = matchingTransactions(for: item)
-        await logWork("Found \(matches.count) charge(s)")
-        await logWork("Writing “\(value)” on each")
+        await logWork("Writing \(value ?? "nil") on \(matches.count) charge(s)")
         for tx in matches {
             tx.subscriptionCadenceOverride = value
         }
-        await logWork("Saving")
         try? modelContext.save()
-        await logWork("Saved")
-        await logWork("Rescanning")
         let groups = await detectGroups()
-        await logWork("Done")
         workFinished = true
-        try? await Task.sleep(for: .seconds(2.5))
+        try? await Task.sleep(for: .seconds(1))
         path = NavigationPath()
         candidates = groups.active
         ended = groups.ended
         isScanning = false
     }
 
+    /// Timing for the Xcode console only; the overlay just says what's happening.
     @MainActor
     private func logWork(_ message: String) async {
-        guard isSpinning else { return }
-        let elapsed: String
-        if let start = workStartedAt {
-            elapsed = String(format: "+%5.2fs", Date().timeIntervalSince(start))
-        } else {
-            elapsed = "+ 0.00s"
-        }
-        let line = "\(elapsed)  \(message)"
-        workLog.append(line)
-        print("[Recurring] \(line)")
+        #if DEBUG
+        guard isSpinning, let start = workStartedAt else { return }
+        print("[Recurring] \(String(format: "+%5.2fs", Date().timeIntervalSince(start)))  \(message)")
+        #endif
     }
 }
 
 #Preview {
     SubscriptionsView()
+}
+
+/// A colored dot and its caption, for the calendar's key.
+private struct DotLabelStyle: LabelStyle {
+    let color: Color
+
+    func makeBody(configuration: Configuration) -> some View {
+        HStack(spacing: 5) {
+            Circle().fill(color).frame(width: 7, height: 7)
+            configuration.title
+        }
+    }
 }

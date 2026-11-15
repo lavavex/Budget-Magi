@@ -88,11 +88,12 @@ enum PlaidConnectionBackup {
         AskStore.wipe()
     }
 
-    /// Everything on this device, for Settings → Erase All Data.
+    /// Everything on this device, for Settings → Erase all data.
     @MainActor
     static func eraseEverything(modelContext: ModelContext) throws {
         try wipeLocalAppData(modelContext: modelContext)
         removeCloudAskLeftovers()
+        WalletSync.isConnected = false
     }
 
     /// Ask once offered Claude and Grok with the user's own API keys. This deletes those keys,
@@ -1070,13 +1071,7 @@ private extension PlaidConnectionBackup {
             guard !trimmed.isEmpty else { continue }
             // Never clobber a nickname the user already set on this device.
             if let live = existing[key], !live.isEmpty { continue }
-            if key.hasPrefix("account:") {
-                let id = String(key.dropFirst("account:".count))
-                CardLabelStore.setLabel(trimmed, accountId: id)
-            } else if key.hasPrefix("method:") {
-                let method = String(key.dropFirst("method:".count))
-                CardLabelStore.setLabel(trimmed, paymentMethod: method)
-            }
+            CardLabelStore.setRawLabel(trimmed, key: key)
         }
     }
 

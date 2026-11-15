@@ -19,6 +19,28 @@ struct MoneyInsightView: View {
     @State private var showAsk = false
 
     var body: some View {
+        Group {
+            if insight.hasActivity {
+                insightList
+            } else {
+                ContentUnavailableView(insight.headline, systemImage: "calendar")
+            }
+        }
+        .navigationTitle(title)
+        .navigationBarTitleDisplayMode(.inline)
+        .sheet(isPresented: $showAsk) {
+            OnDeviceAIChatView(initialQuestion: followUpQuestion)
+        }
+        .task(id: insight.headline) {
+            summary = nil
+            guard insight.hasActivity, case .available = OnDeviceAI.availabilityStatus() else { return }
+            isSummarizing = true
+            summary = try? await OnDeviceAI.summarize(insight)
+            isSummarizing = false
+        }
+    }
+
+    private var insightList: some View {
         List {
             if isSummarizing || summary != nil {
                 Section {
@@ -34,15 +56,24 @@ struct MoneyInsightView: View {
                 }
             }
 
-            Section {
-                Text(insight.headline)
-                    .font(.body.weight(.medium))
+            // The summary already says what the headline does, so showing both repeats it.
+            if summary == nil {
+                Section {
+                    Text(insight.headline)
+                        .font(.body.weight(.medium))
+                }
             }
 
             ForEach(insight.sections, id: \.title) { section in
                 Section(section.title) {
-                    ForEach(section.lines, id: \.self) { line in
-                        Text(line)
+                    ForEach(Array(section.lines.enumerated()), id: \.offset) { index, line in
+                        if index < section.transactionIds.count {
+                            NavigationLink(line) {
+                                TransactionByIdView(transactionId: section.transactionIds[index])
+                            }
+                        } else {
+                            Text(line)
+                        }
                     }
                 }
             }
@@ -53,17 +84,22 @@ struct MoneyInsightView: View {
                 }
             }
         }
-        .navigationTitle(title)
-        .navigationBarTitleDisplayMode(.inline)
-        .sheet(isPresented: $showAsk) {
-            OnDeviceAIChatView(initialQuestion: followUpQuestion)
-        }
-        .task(id: insight.headline) {
-            summary = nil
-            guard case .available = OnDeviceAI.availabilityStatus() else { return }
-            isSummarizing = true
-            summary = try? await OnDeviceAI.summarize(insight)
-            isSummarizing = false
+    }
+}
+
+/// Opens one charge by id, fetched only when the link is followed.
+private struct TransactionByIdView: View {
+    @Query private var rows: [Transaction]
+
+    init(transactionId: String) {
+        _rows = Query(filter: #Predicate<Transaction> { $0.transactionId == transactionId })
+    }
+
+    var body: some View {
+        if let row = rows.first {
+            TransactionDetailView(transaction: row)
+        } else {
+            ContentUnavailableView("Charge not found", systemImage: "questionmark.circle")
         }
     }
 }

@@ -24,7 +24,7 @@ private enum DebugPendingAction: String, Identifiable {
         case .resetCursors: return "Reset sync cursors?"
         case .clearVendorRules: return "Clear learned vendor rules?"
         case .clearNicknames: return "Clear card nicknames?"
-        case .clearCadenceOverrides: return "Clear Recurring marks?"
+        case .clearCadenceOverrides: return "Clear recurring marks?"
         case .clearLogos: return "Clear cached logos?"
         case .resetBudget: return "Reset budget plan?"
         case .clearPayoffPlans: return "Delete payoff plans?"
@@ -41,7 +41,7 @@ private enum DebugPendingAction: String, Identifiable {
         case .clearNicknames:
             return "Account and payment-method nicknames go back to bank names."
         case .clearCadenceOverrides:
-            return "Removes Not Recurring / Cancelled marks on charges. Recurring will detect those vendors again."
+            return "Removes Not Recurring / Cancelled marks on charges. Upcoming will detect those vendors again."
         case .clearLogos:
             return "Deletes cached institution logos. They will fetch again as tiles appear."
         case .resetBudget:
@@ -157,7 +157,7 @@ struct DebugMenuView: View {
                 Button("Reset sync cursors") { pending = .resetCursors }
                 Button("Clear learned vendor rules") { pending = .clearVendorRules }
                 Button("Clear card nicknames") { pending = .clearNicknames }
-                Button("Clear Recurring marks") { pending = .clearCadenceOverrides }
+                Button("Clear recurring marks") { pending = .clearCadenceOverrides }
                 Button("Clear cached logos") { pending = .clearLogos }
                 Button("Reset budget plan") { pending = .resetBudget }
                 Button("Delete payoff plans") { pending = .clearPayoffPlans }
@@ -256,7 +256,7 @@ struct DebugMenuView: View {
                 count += 1
             }
             try? modelContext.save()
-            statusMessage = "Cleared \(count) Recurring mark(s)."
+            statusMessage = "Cleared \(count) recurring mark(s)."
         case .clearLogos:
             InstitutionLogoCache.wipeAllLogoFiles()
             statusMessage = "Logo cache cleared."

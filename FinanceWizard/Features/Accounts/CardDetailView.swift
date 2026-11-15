@@ -152,7 +152,8 @@ struct CardDetailView: View {
     // }
 
     var body: some View {
-        List {
+        // Two columns when wide: the account on the left, its activity on the right.
+        TwoColumnList {
             Section {
                 InstitutionLogoHeader(
                     displayName: titleName.isEmpty ? displayName : titleName,
@@ -163,54 +164,6 @@ struct CardDetailView: View {
                 .listRowBackground(Color.clear)
             }
 
-            Section {
-                TextField("Display name", text: $nicknameDraft)
-                    .textInputAutocapitalization(.words)
-                // Credit vs bank vs orphan method show different identity fields.
-                if let credit = creditAccount {
-                    LabeledContent("Bank name") {
-                        CardText(credit.plaidDisplayName)
-                            .foregroundStyle(.secondary)
-                            .multilineTextAlignment(.trailing)
-                    }
-                    if let mask = credit.mask, !mask.isEmpty {
-                        LabeledContent("Last four") {
-                            CardText(mask)
-                                .font(.body.monospaced())
-                                .foregroundStyle(.secondary)
-                        }
-                    }
-                } else if let bank = bankAccount {
-                    LabeledContent("Bank name") {
-                        CardText(bank.plaidDisplayName)
-                            .foregroundStyle(.secondary)
-                            .multilineTextAlignment(.trailing)
-                    }
-                    if let mask = bank.mask, !mask.isEmpty {
-                        LabeledContent("Last four") {
-                            CardText(mask)
-                                .font(.body.monospaced())
-                                .foregroundStyle(.secondary)
-                        }
-                    }
-                } else {
-                    LabeledContent("Account") {
-                        CardText(rawPaymentMethod)
-                            .foregroundStyle(.secondary)
-                            .multilineTextAlignment(.trailing)
-                    }
-                }
-                Button("Save name") {
-                    saveNickname()
-                }
-                if didSaveNickname {
-                    Label("Saved", systemImage: "checkmark.circle.fill")
-                        .foregroundStyle(.green)
-                        .font(.caption)
-                }
-            } header: {
-                Text("Account name")
-            }
 
             Section {
                 if let credit = creditAccount {
@@ -261,7 +214,9 @@ struct CardDetailView: View {
                     MoneyText(cardSpend)
                         .foregroundStyle(.secondary)
                 }
-                Text("\(summaryPeriodLabel) · \(currentStatementRows.count) transactions")
+                // Charges only, to match the spend-only total above.
+                let charges = TransactionAnalytics.spendOnly(currentStatementRows).count
+                Text("\(summaryPeriodLabel) · \(charges == 1 ? "1 charge" : "\(charges) charges")")
                     .font(.caption)
                     .foregroundStyle(.secondary)
 
@@ -275,6 +230,56 @@ struct CardDetailView: View {
                 }
             } header: {
                 Text("Summary")
+            }
+
+            Section {
+                TextField("Display name", text: $nicknameDraft)
+                    .textInputAutocapitalization(.words)
+                // Credit vs bank vs orphan method show different identity fields.
+                if let credit = creditAccount {
+                    LabeledContent("Bank name") {
+                        CardText(credit.plaidDisplayName)
+                            .foregroundStyle(.secondary)
+                            .multilineTextAlignment(.trailing)
+                    }
+                    if let mask = credit.mask, !mask.isEmpty {
+                        LabeledContent("Last four") {
+                            CardText(mask)
+                                .font(.body.monospaced())
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                } else if let bank = bankAccount {
+                    LabeledContent("Bank name") {
+                        CardText(bank.plaidDisplayName)
+                            .foregroundStyle(.secondary)
+                            .multilineTextAlignment(.trailing)
+                    }
+                    if let mask = bank.mask, !mask.isEmpty {
+                        LabeledContent("Last four") {
+                            CardText(mask)
+                                .font(.body.monospaced())
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                } else {
+                    LabeledContent("Account") {
+                        CardText(rawPaymentMethod)
+                            .foregroundStyle(.secondary)
+                            .multilineTextAlignment(.trailing)
+                    }
+                }
+                Button("Save name") {
+                    saveNickname()
+                }
+                .disabled(nicknameDraft.trimmingCharacters(in: .whitespacesAndNewlines) == titleName)
+                if didSaveNickname {
+                    Label("Saved", systemImage: "checkmark.circle.fill")
+                        .foregroundStyle(.green)
+                        .font(.caption)
+                }
+            } header: {
+                Text("Account name")
             }
 
             if let credit = creditAccount, credit.hasLiabilitiesDetails {
@@ -305,7 +310,7 @@ struct CardDetailView: View {
                                 if let days = credit.daysUntilDue {
                                     Text(dueSubtitle(days: days, overdue: credit.isOverdue == true))
                                         .font(.caption)
-                                        .foregroundStyle(days < 0 || credit.isOverdue == true ? .red : .secondary)
+                                        .foregroundStyle(credit.isOverdue == true ? .red : .secondary)
                                 }
                             }
                         }
@@ -397,7 +402,7 @@ struct CardDetailView: View {
                             )
                         }
                     }
-                    Button("Pay off by date") {
+                    Button("Add a pay-off plan") {
                         showAddPayoff = true
                     }
                 } header: {
@@ -407,6 +412,7 @@ struct CardDetailView: View {
                 }
             }
 
+        } right: {
             if statementGroups.isEmpty {
                 Section("Activity") {
                     Text("No transactions on this account yet.")
@@ -423,7 +429,8 @@ struct CardDetailView: View {
                                     transaction: transaction,
                                     institutionId: account?.institutionId,
                                     institutionName: account?.institutionName,
-                                    showPaymentRail: bankAccount?.isDepository == true || creditAccount == nil
+                                    showPaymentRail: bankAccount?.isDepository == true || creditAccount == nil,
+                                    account: account
                                 )
                             }
                         }
@@ -472,18 +479,22 @@ struct CardDetailView: View {
     /// Persist a custom display name (or clear it if empty / same as Plaid name).
     private func saveNickname() {
         let value = nicknameDraft.trimmingCharacters(in: .whitespacesAndNewlines)
-        let plaidFallback = creditAccount?.plaidDisplayName
-            ?? bankAccount?.plaidDisplayName
-            ?? rawPaymentMethod
+        let plaidFallback = account?.defaultDisplayName ?? rawPaymentMethod
         // Empty or unchanged → store nil (use bank name).
-        let custom: String? = (value.isEmpty || value == plaidFallback) ? nil : value
+        let custom: String? = (value.isEmpty || value == plaidFallback || value == account?.plaidDisplayName) ? nil : value
         // Nicknames persist outside the store, and sample cards shouldn't leave any behind.
         if !DemoMode.isActive {
-            CardLabelStore.setLabel(
-                custom,
-                accountId: account?.accountId,
-                paymentMethod: rawPaymentMethod
-            )
+            if let account {
+                // Also under the bank and last four, so relinking the bank keeps the name.
+                CardLabelStore.setLabel(
+                    custom,
+                    accountId: account.accountId,
+                    institution: account.institutionName,
+                    mask: account.mask
+                )
+            } else {
+                CardLabelStore.setLabel(custom, paymentMethod: rawPaymentMethod)
+            }
         }
         titleName = custom ?? plaidFallback
         nicknameDraft = titleName
@@ -506,7 +517,8 @@ struct CardDetailView: View {
 
     /// Relative due copy: past due, today, tomorrow, or “In N days.”
     private func dueSubtitle(days: Int, overdue: Bool) -> String {
-        if overdue || days < 0 {
+        if !overdue, days < 0 { return "Date passed · Sync to update" }
+        if overdue {
             let past = abs(min(days, 0))
             if past == 0 { return "Due today" }
             return past == 1 ? "1 day past due" : "\(past) days past due"

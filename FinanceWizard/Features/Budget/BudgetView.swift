@@ -20,6 +20,8 @@ struct BudgetView: View {
     @State private var period: SnapshotPeriod = .month
     @State private var referenceDate: Date = TransactionAnalytics.monthStart(for: Date())
     @State private var monthlyDraft: String = ""
+    @FocusState private var monthlyFocused: Bool
+    @State private var showBudgetAsk = false
     @State private var editingCategory: String?
     @State private var categoryDraft: String = ""
     @State private var showAddCategory = false
@@ -34,29 +36,6 @@ struct BudgetView: View {
 
     private var periodLabel: String {
         period.filterLabel(referenceDate: referenceDate)
-    }
-
-    private var cardsDueThisPeriod: [BankAccount] {
-        let credit = accounts.filter(\.isCredit)
-        guard let interval = TransactionAnalytics.dateInterval(
-            for: period,
-            referenceDate: referenceDate
-        ) else {
-            return credit.filter { $0.nextPaymentDueDate != nil || $0.isOverdue == true }
-                .sorted { ($0.nextPaymentDueDate ?? .distantFuture) < ($1.nextPaymentDueDate ?? .distantFuture) }
-        }
-        return credit.filter { account in
-            if account.isOverdue == true { return true }
-            guard let due = account.nextPaymentDueDate else { return false }
-            return due >= interval.start && due < interval.end
-        }
-        .sorted { ($0.nextPaymentDueDate ?? .distantFuture) < ($1.nextPaymentDueDate ?? .distantFuture) }
-    }
-
-    private var extraPrincipalDue: Double {
-        cardsDueThisPeriod.reduce(0) {
-            $0 + PayoffPlanProgress.extraPrincipalThisStatement(on: $1, plans: Array(payoffPlans))
-        }
     }
 
     /// Aggregated spend/income vs limits for the current plan and period.
@@ -84,6 +63,15 @@ struct BudgetView: View {
                 }
             }
             .navigationTitle("Budget")
+            .toolbar {
+                ToolbarItemGroup(placement: .keyboard) {
+                    Spacer()
+                    Button("Done") { monthlyFocused = false }
+                }
+            }
+            .sheet(isPresented: $showBudgetAsk) {
+                OnDeviceAIChatView(initialQuestion: "Help me make a budget")
+            }
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     // Limits and expected income are monthly figures; comparing a week or
@@ -143,12 +131,12 @@ struct BudgetView: View {
                 TextField("Amount", text: $categoryDraft)
                     .keyboardType(.decimalPad)
                 Button("Save") { saveCategoryEdit() }
-                Button("Remove limit", role: .destructive) {
-                    if let cat = editingCategory {
+                if let cat = editingCategory, plan?.limit(forCategory: cat) != nil {
+                    Button("Remove limit", role: .destructive) {
                         plan?.setLimit(nil, forCategory: cat)
                         try? modelContext.save()
+                        editingCategory = nil
                     }
-                    editingCategory = nil
                 }
                 Button("Cancel", role: .cancel) { editingCategory = nil }
             } message: {
@@ -161,7 +149,8 @@ struct BudgetView: View {
 
     @ViewBuilder
     private func budgetList(plan: BudgetPlan, snapshot: BudgetSnapshot) -> some View {
-        List {
+        // Two columns when wide: the month, income and overall budget left; categories right.
+        TwoColumnList {
             // MARK: Overview
             Section {
                 VStack(alignment: .leading, spacing: 12) {
@@ -175,9 +164,6 @@ struct BudgetView: View {
                         }
                         Spacer()
                         VStack(alignment: .trailing, spacing: 2) {
-                            Text(periodLabel)
-                                .font(.caption2)
-                                .foregroundStyle(.tertiary)
                             if let remaining = snapshot.totalRemaining {
                                 Text(snapshot.isOverTotal ? "Over" : "Left")
                                     .font(.caption)
@@ -225,10 +211,10 @@ struct BudgetView: View {
                                         .foregroundStyle(.secondary)
                                 }
                             }
-                            if let delta = snapshot.incomeVsExpected, snapshot.expectedIncome > 0.005 {
+                            if let delta = snapshot.incomeVsExpected, snapshot.expectedSoFar > 0.005 || snapshot.income > 0.005 {
                                 HStack {
                                     // Small epsilon (-0.005) avoids floating-point “almost zero” flicker.
-                                    Text(delta >= -0.005 ? "Ahead of plan" : "Behind plan")
+                                    Text(delta >= -0.005 ? "Income ahead of expected so far" : "Income behind expected so far")
                                         .font(.caption2)
                                         .foregroundStyle(.tertiary)
                                     Spacer()
@@ -251,74 +237,19 @@ struct BudgetView: View {
                         }
                     }
 
-                    Text("\(snapshot.transactionCount) expenses")
+                    Text(snapshot.transactionCount == 1 ? "1 expense" : "\(snapshot.transactionCount) expenses")
                         .font(.caption2)
                         .foregroundStyle(.tertiary)
                 }
                 .padding(.vertical, 4)
             } header: {
-                Text("This period")
-            }
-
-            if !cardsDueThisPeriod.isEmpty {
-                Section {
-                    ForEach(cardsDueThisPeriod, id: \.accountId) { account in
-                        let included = PayoffPlanProgress.installmentIncludedInMin(
-                            on: account,
-                            plans: Array(payoffPlans)
-                        )
-                        let extra = PayoffPlanProgress.extraPrincipalThisStatement(
-                            on: account,
-                            plans: Array(payoffPlans)
-                        )
-                        VStack(alignment: .leading, spacing: 4) {
-                            HStack {
-                                CardText(account.displayName)
-                                Spacer()
-                                if let min = account.minimumPaymentAmount {
-                                    MoneyText(min)
-                                        .font(.body.weight(.semibold))
-                                }
-                            }
-                            HStack {
-                                if let due = account.nextPaymentDueDate {
-                                    Text("Due \(due.formatted(date: .abbreviated, time: .omitted))")
-                                        .font(.caption)
-                                        .foregroundStyle(.secondary)
-                                }
-                                Spacer()
-                                if included > 0.005 {
-                                    Text("Min includes \(included.formatted(.currency(code: "USD"))) installment")
-                                        .font(.caption2)
-                                        .foregroundStyle(.tertiary)
-                                }
-                            }
-                            if extra > 0.005 {
-                                Text("+\(extra.formatted(.currency(code: "USD"))) extra principal (pay-off plan)")
-                                    .font(.caption2)
-                                    .foregroundStyle(.secondary)
-                            }
-                        }
-                    }
-                    if extraPrincipalDue > 0.005 {
-                        HStack {
-                            Text("Extra principal this period")
-                            Spacer()
-                            MoneyText(extraPrincipalDue)
-                                .font(.subheadline.weight(.semibold))
-                        }
-                    }
-                } header: {
-                    Text("Cards due")
-                } footer: {
-                    Text("Card minimums already include loans and installments. Extra principal is on top of the minimum.")
-                }
+                Text(periodLabel)
             }
 
             // MARK: Expected income
             Section {
                 if plan.expectedIncomeStreams.isEmpty {
-                    Text("Add paycheck or other regular income to power smart budgets.")
+                    Text("Add your paycheck or other regular income to see whether it's arriving on time.")
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                 } else {
@@ -333,7 +264,7 @@ struct BudgetView: View {
                     }
                     if plan.expectedMonthlyIncome > 0 {
                         HStack {
-                            Text("Est. monthly total")
+                            Text("Monthly total")
                                 .font(.subheadline.weight(.medium))
                             Spacer()
                             MoneyText(plan.expectedMonthlyIncome)
@@ -363,23 +294,30 @@ struct BudgetView: View {
                         .keyboardType(.decimalPad)
                         .multilineTextAlignment(.trailing)
                         .frame(maxWidth: 120)
+                        .focused($monthlyFocused)
+                        // The number pad has no return key, so leaving the field saves it.
+                        .onChange(of: monthlyFocused) { _, focused in
+                            if !focused { saveMonthlyLimit(plan: plan) }
+                        }
                     Text("USD")
                         .foregroundStyle(.secondary)
                 }
-                Button("Save monthly budget") {
-                    saveMonthlyLimit(plan: plan)
-                }
-                .fontWeight(.semibold)
             } header: {
                 Text("Overall")
             }
 
+        } right: {
             // MARK: Categories
             Section {
                 if snapshot.categories.isEmpty {
                     Text("No spend yet this period. Add category limits to track specific areas.")
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
+                    Button {
+                        showBudgetAsk = true
+                    } label: {
+                        Label("Build a budget with Ask", systemImage: "apple.intelligence")
+                    }
                 } else {
                     ForEach(snapshot.categories) { row in
                         Button {
@@ -393,6 +331,10 @@ struct BudgetView: View {
                 }
 
                 Button {
+                    // Start on a category that has no limit yet, so Add never replaces one unseen.
+                    addCategoryName = KnownCategory.budgetPickerNames.first { plan.limit(forCategory: $0) == nil }
+                        ?? KnownCategory.groceries.rawValue
+                    addCategoryAmount = ""
                     showAddCategory = true
                 } label: {
                     Label("Add category limit", systemImage: "plus.circle.fill")
@@ -499,7 +441,7 @@ struct BudgetView: View {
                     }
                     Spacer()
                     if row.transactionCount > 0 {
-                        Text("\(row.transactionCount) txns")
+                        Text(row.transactionCount == 1 ? "1 charge" : "\(row.transactionCount) charges")
                             .font(.caption2)
                             .foregroundStyle(.tertiary)
                     }
@@ -522,7 +464,11 @@ struct BudgetView: View {
                         Text(name).tag(name)
                     }
                 }
-                if let cat = KnownCategory.match(for: addCategoryName) {
+                if let current = plan?.limit(forCategory: addCategoryName) {
+                    Text("\(addCategoryName) already has a \(moneyShort(current)) limit. Adding replaces it.")
+                        .font(.caption)
+                        .foregroundStyle(.orange)
+                } else if let cat = KnownCategory.match(for: addCategoryName) {
                     Text(cat.budgetHint)
                         .font(.caption)
                         .foregroundStyle(.secondary)

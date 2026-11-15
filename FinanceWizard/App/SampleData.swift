@@ -32,7 +32,7 @@ struct SampleDataBanner: View {
                 Text("These numbers are made up. Nothing you change here is kept.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
-                Button("Exit Sample Data") { sampleData.exit() }
+                Button("Exit sample data") { sampleData.exit() }
                     .font(.subheadline.weight(.semibold))
                     .buttonStyle(.borderless)
             }

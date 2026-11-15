@@ -43,11 +43,11 @@ struct EraseAllDataView: View {
                 }
 
                 Section {
-                    Button("Erase All Data", role: .destructive) { erase() }
+                    Button("Erase all data", role: .destructive) { erase() }
                         .disabled(!Self.isConfirmed(confirmation))
                 }
             }
-            .navigationTitle("Erase All Data")
+            .navigationTitle("Erase all data")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {

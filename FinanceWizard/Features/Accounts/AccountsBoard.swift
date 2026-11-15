@@ -14,7 +14,6 @@ import SwiftData
 /// Built once (or when inputs change), then the UI only reads these precomputed fields.
 /// Not a View — pure data so heavy work stays out of SwiftUI’s body.
 struct AccountsBoard {
-    var periodTotalSpend: Double = 0
     var totalOwed: Double = 0
     var totalLimit: Double = 0
     // Optional because utilization is undefined when totalLimit is 0.
@@ -24,7 +23,6 @@ struct AccountsBoard {
     var soonestDueDate: Date? = nil
     var anyOverdue: Bool = false
     var periodPayments: [CreditCardPayment] = []
-    var upcomingBills: [BankAccount] = []
     var creditRows: [UnifiedCardRow] = []
     var depositoryRows: [UnifiedCardRow] = []
     var otherSpendRows: [UnifiedCardRow] = []
@@ -46,7 +44,6 @@ struct AccountsBoard {
             period: period,
             referenceDate: referenceDate
         )
-        board.periodTotalSpend = index.totalSpend
         board.periodPayments = CreditAnalytics.payments(
             in: payments,
             period: period,
@@ -66,7 +63,7 @@ struct AccountsBoard {
         board.totalMinimumDue = creditAccounts.compactMap(\.minimumPaymentAmount).reduce(0, +)
         board.anyOverdue = creditAccounts.contains { $0.isOverdue == true }
 
-        // Upcoming bills: overdue or due within 30 days.
+        // Next due: overdue or due within 30 days.
         let cal = Calendar.current
         let today = cal.startOfDay(for: Date())
         let horizon = cal.date(byAdding: .day, value: 30, to: today)
@@ -87,12 +84,6 @@ struct AccountsBoard {
             .filter(isLiveDueDate)
             .compactMap(\.nextPaymentDueDate)
             .min()
-        board.upcomingBills = creditAccounts
-            .filter(isLiveDueDate)
-            .sorted {
-                // Missing dates sort last.
-                ($0.nextPaymentDueDate ?? .distantFuture) < ($1.nextPaymentDueDate ?? .distantFuture)
-            }
 
         // PERF: the credit loop below used to run `transactions.filter { … }` per card, so a
         // 5-card wallet walked all 3,232 rows five times and recomputed cardName(for:) each
@@ -217,6 +208,14 @@ struct AccountsBoard {
         return board
     }
 
+    /// Cards with a payment coming, soonest first: on Upcoming and Home. A due date that passed
+    /// without the bank marking the card overdue is old data rather than a bill.
+    static func upcomingCardPayments(_ accounts: [BankAccount]) -> [BankAccount] {
+        accounts
+            .filter { $0.isCredit && $0.nextPaymentDueDate != nil && ($0.isOverdue == true || !$0.dueDateIsStale) }
+            .sorted { ($0.nextPaymentDueDate ?? .distantFuture) < ($1.nextPaymentDueDate ?? .distantFuture) }
+    }
+
     /// Filter period payments that belong to a given credit account / payment-method set.
     static func paymentsMatching(
         credit: BankAccount?,
@@ -257,7 +256,7 @@ struct UpcomingBillRow: View {
     // Color escalates as due date nears or utilization is high.
     private var urgencyColor: Color {
         if account.isOverdue == true { return .red }
-        if let days = account.daysUntilDue {
+        if let days = account.daysUntilDue, !account.dueDateIsStale {
             if days <= 3 { return .red }
             if days <= 7 { return .orange }
             if let util = account.utilization, util >= 0.7 { return .orange }
@@ -278,7 +277,7 @@ struct UpcomingBillRow: View {
             VStack(alignment: .leading, spacing: 2) {
                 CardText(account.displayName)
                     .font(.body.weight(.semibold))
-                    .lineLimit(1)
+                    .lineLimit(2)
                 if let util = account.utilization {
                     Text("\(Int((util * 100).rounded()))% utilization")
                         .font(.caption2)
@@ -288,22 +287,29 @@ struct UpcomingBillRow: View {
             Spacer(minLength: 8)
             VStack(alignment: .trailing, spacing: 2) {
                 // Prefer minimum payment; fall back to full balance.
+                // Amounts never wrap; the name truncates instead.
                 if let min = account.minimumPaymentAmount {
                     MoneyText(min)
                         .font(.body.weight(.semibold))
                         .foregroundStyle(urgencyColor)
+                        .fixedSize()
                 } else {
+                    // No minimum from the bank, so this is the balance, not what's due.
                     MoneyText(max(0, account.currentBalance))
                         .font(.body.weight(.semibold))
                         .foregroundStyle(urgencyColor)
+                        .fixedSize()
+                    Text("Balance")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
                 }
                 if installmentIncluded > 0.005 {
-                    Text("Incl. \(installmentIncluded.formatted(.currency(code: "USD"))) installment")
+                    Text("Includes \(installmentIncluded.formatted(.currency(code: "USD"))) in installments")
                         .font(.caption2)
                         .foregroundStyle(.secondary)
                 }
                 if let isb = interestSavingBalance, isb > 0.005 {
-                    MoneyText(isb, prefix: "Int. saving ")
+                    MoneyText(isb, prefix: "Interest-saving ")
                         .font(.caption2)
                         .foregroundStyle(.tertiary)
                 }
@@ -312,6 +318,10 @@ struct UpcomingBillRow: View {
                         Text("Overdue")
                             .font(.caption2.weight(.semibold))
                             .foregroundStyle(.red)
+                    } else if account.dueDateIsStale {
+                        Text("Due date passed")
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
                     } else if let days = account.daysUntilDue {
                         Text(days == 0 ? "Due today" : "Due in \(days)d")
                             .font(.caption2)
@@ -329,6 +339,32 @@ struct UpcomingBillRow: View {
     }
 }
 
+/// A card payment that opens its card: on Upcoming and Home.
+struct UpcomingCardLink: View {
+    let account: BankAccount
+    /// Every payment-method string in use, for the card's own activity.
+    let methods: Set<String>
+    let plans: [PayoffPlan]
+
+    var body: some View {
+        NavigationLink {
+            CardDetailView(
+                displayName: account.displayName,
+                rawPaymentMethod: account.plaidDisplayName,
+                matchingPaymentMethods: account.matchingPaymentMethods(in: methods),
+                creditAccount: account,
+                bankAccount: account
+            )
+        } label: {
+            UpcomingBillRow(
+                account: account,
+                installmentIncluded: PayoffPlanProgress.installmentIncludedInMin(on: account, plans: plans),
+                interestSavingBalance: PayoffPlanProgress.interestSavingBalance(on: account, plans: plans)
+            )
+        }
+    }
+}
+
 // MARK: - Total paid disclosure
 
 /// Expandable “Total paid” row listing credit-card bill payments in the period.
@@ -339,10 +375,16 @@ struct TotalPaidDisclosure: View {
     var institutionId: String?
     var resolveInstitutionId: ((CreditCardPayment) -> String?)? = nil
 
+    /// "This month" reads as "this month" mid-sentence, while "June 2026" keeps its capital.
+    static func inSentence(_ label: String) -> String {
+        guard label.hasPrefix("This ") || label.hasPrefix("Last ") || label == "All time" else { return label }
+        return label.prefix(1).lowercased() + label.dropFirst()
+    }
+
     var body: some View {
         DisclosureGroup {
             if payments.isEmpty {
-                Text("No card bill payments in \(periodLabel.lowercased()).")
+                Text("No card bill payments in \(Self.inSentence(periodLabel)).")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             } else {
@@ -432,7 +474,7 @@ struct UnifiedCardLabel: View {
                             .lineLimit(1)
                     } else {
                         Text(row.transactionCount > 0
-                             ? "\(row.transactionCount) purchases"
+                             ? (row.transactionCount == 1 ? "1 purchase" : "\(row.transactionCount) purchases")
                              : "No purchases this period")
                             .font(.caption)
                             .foregroundStyle(.secondary)
@@ -486,12 +528,12 @@ struct UnifiedCardLabel: View {
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
                             if row.installmentIncludedInMin > 0.005 {
-                                Text("includes \(row.installmentIncludedInMin.formatted(.currency(code: "USD"))) loan/installment")
+                                Text("Includes \(row.installmentIncludedInMin.formatted(.currency(code: "USD"))) in installments")
                                     .font(.caption2)
                                     .foregroundStyle(.tertiary)
                             }
                             if let isb = row.interestSavingBalance, isb > 0.005 {
-                                MoneyText(isb, prefix: "Int. saving ")
+                                MoneyText(isb, prefix: "Interest-saving ")
                                     .font(.caption2)
                                     .foregroundStyle(.tertiary)
                             }
@@ -507,6 +549,10 @@ struct UnifiedCardLabel: View {
                             Text("Overdue")
                                 .font(.caption.weight(.semibold))
                                 .foregroundStyle(.red)
+                        } else if credit.dueDateIsStale {
+                            Text("Due date passed")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
                         } else {
                             Text("Due \(due.formatted(date: .abbreviated, time: .omitted))")
                                 .font(.caption)

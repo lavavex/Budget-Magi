@@ -43,6 +43,15 @@ struct PlaidSyncReport: Sendable {
     var refreshedItems: Int = 0
     var warnings: [String] = []
 
+    /// One plain sentence for the status card. The counters stay in `summary`.
+    var headline: String {
+        if !warnings.isEmpty {
+            return warnings.count == 1 ? warnings[0] : "\(warnings.count) banks need attention. See details."
+        }
+        let banks = itemLines.count == 1 ? "1 bank" : "\(itemLines.count) banks"
+        return "\(banks) up to date."
+    }
+
     /// Multi-line human-readable summary for Settings / alerts.
     var summary: String {
         var lines: [String] = []

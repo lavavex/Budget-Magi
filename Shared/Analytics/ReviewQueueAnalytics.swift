@@ -19,7 +19,7 @@ enum ReviewQueueReason: String, CaseIterable, Identifiable, Sendable {
     var title: String {
         switch self {
         case .billPayCandidate: return "Bill pay?"
-        case .weakCategory: return "Category"
+        case .weakCategory: return "Needs a category"
         }
     }
 

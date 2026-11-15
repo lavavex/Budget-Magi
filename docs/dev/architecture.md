@@ -32,7 +32,7 @@ FinanceWizard/                 Main app (SwiftUI + Plaid client)
   App/                         @main, splash, RootWithSplash → OnboardingGate
   Features/
     Onboarding/                Welcome, gate, completed-flag store
-    Transactions/              List tools, detail, period filter, review, Recurring
+    Transactions/              List tools, detail, period filter, review, Upcoming
     Accounts/                  Accounts hub, card detail, payoff plans, accounts board model
     Budget/                    Monthly budget UI
     Settings/                  Settings, backup, debug export, Debug menu
@@ -73,7 +73,7 @@ docs/                          GitHub Pages documentation
 | **Where data stays** | Inference is on-device (Apple Intelligence); still prefer minimal transaction context in prompts |
 | **Capability / entitlement** | None beyond what the system already requires for Apple Intelligence |
 
-`Features/AI/` — availability on Settings. **Ask** tab bar accessory on `ContentView` (sheet, not a sixth tab). `AskLedger` computes every total, tools hand short results to the model, and `AskConversation` manages on-device sessions, the recap of earlier questions, and answer checks. Persisted thread (separate store). `suggestCategory` on transaction detail.
+`Features/AI/` — availability on Settings. **Ask** is a tab bar accessory on `ContentView` (`AskField`), not a sixth tab. Tapping it opens `AskComposer`, an overlay that rides above the keyboard, since the accessory doesn't move for it; sending opens the chat sheet with the question. `AskLedger` computes every total, tools hand short results to the model, and `AskConversation` manages on-device sessions, the recap of earlier questions, and answer checks. Persisted thread (separate store). `suggestCategory` on transaction detail.
 
 ### Cost of the hot paths
 
@@ -129,15 +129,17 @@ RootWithSplash
 └── OnboardingGate
       ├── OnboardingView      (Welcome, if settings.onboardingCompleted is false)
       └── ContentView TabView
-            ├── Transactions  (AllTransactionsView)
-            ├── Accounts      (CardsView → CardDetailView)
+            ├── Home          (HomeView)
+            ├── Accounts      (CardsView → AllAccountsView, CardDetailView)
             ├── Budget        (BudgetView)
-            ├── Recurring     (SubscriptionsView)
+            ├── Upcoming      (SubscriptionsView)
             └── Settings      (SettingsView → DebugMenuView)
 ```
 
 See [How it works](how-it-works.md) for the file-level map. See [Onboarding](onboarding.md).
 
+
+**Layout by width.** `App/AdaptiveLayout.swift` publishes the window's width as `appWidth` from `ContentView`. Size class can't separate the iPhone Duo's cover (466 pt), its inner screen, and an iPad, since all report regular width; beside the side tab bar the inner screen gives the app 867 pt sideways. At `LayoutWidth.roomy` (600 pt) All accounts puts its totals side by side. At `LayoutWidth.twoColumn` (800 pt) `TwoColumnList` shows a screen's sections as two equal inset-grouped lists that start on the same line (10 pt each side of the gap); narrower, the same sections stack in one list. Home, Accounts, All accounts, card detail, transaction detail, Budget, and Upcoming use it, and anything opened pushes full width. Only Settings builds a `NavigationSplitView` (`SettingsPage` rows with icon tiles, each page a `Form` of the same sections the one-column form uses; the sidebar takes `containerBackground` so cards stay light on gray). Home switches tabs through the `selectTab` environment action. Card nicknames are also kept under `card:<bank>|<last four>` in `CardLabelStore`, because relinking a bank gives every account a new id.
 ## Persistence
 
 | Concern | Technology |

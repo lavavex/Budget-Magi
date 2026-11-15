@@ -14,6 +14,8 @@ struct TransactionRowView: View {
     var institutionId: String? = nil
     var institutionName: String? = nil
     var showPaymentRail: Bool = false
+    /// The linked account the charge was made on, so the row can use its readable name.
+    var account: BankAccount? = nil
 
     @Environment(\.screenshotPrivacy) private var screenshotPrivacy
 
@@ -56,10 +58,10 @@ struct TransactionRowView: View {
                 .font(.caption)
                 .foregroundStyle(.secondary)
                 HStack(spacing: 4) {
-                    Text(transaction.displayDate, style: .date)
+                    Text(transaction.date, style: .date)
                     // isPending is optional Bool — compare to true, not truthy.
                     if transaction.isPending == true {
-                        Text("· Pending")
+                        Text(isLongPending ? "· Pending · may have dropped" : "· Pending")
                             .foregroundStyle(.orange)
                     }
                 }
@@ -90,18 +92,26 @@ struct TransactionRowView: View {
                     Text("Installment")
                         .font(.caption2.weight(.semibold))
                         .foregroundStyle(CategoryStyle.services)
-                } else {
-                    Text(transaction.category)
-                        .font(.caption2)
-                        .foregroundStyle(.tertiary)
-                        .lineLimit(1)
                 }
+                // Other categories already show in the subtitle, so they get no badge here.
             }
         }
     }
 
+    /// Banks post or drop a hold within a few days. One still pending after ten days most
+    /// likely fell off and the bank never told Plaid.
+    private var isLongPending: Bool {
+        transaction.date < Date().addingTimeInterval(-10 * 24 * 60 * 60)
+    }
+
+    /// A nickname first, then the account's display name, so a card Plaid calls "CREDIT CARD"
+    /// reads the same here as on Accounts.
     private var displayPaymentMethod: String {
-        CardLabelStore.label(paymentMethod: transaction.paymentMethod)
+        CardLabelStore.label(
+            paymentMethod: transaction.paymentMethod,
+            accountId: account?.accountId,
+            fallback: account?.displayName
+        )
     }
 
     // Color for debit vs ACH vs other rails (helps depository account rows).

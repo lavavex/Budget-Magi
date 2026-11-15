@@ -115,7 +115,7 @@ struct IncomeDetailView: View {
                                 institutionName: linkedAccount?.institutionName ?? income.sourceInstitution
                             )
                             VStack(alignment: .trailing, spacing: 2) {
-                                CardText(accountName)
+                                CardText(linkedAccount?.displayName ?? accountName)
                                 if let mask = income.accountMask, !mask.isEmpty {
                                     CardText("···\(mask)")
                                         .font(.caption)

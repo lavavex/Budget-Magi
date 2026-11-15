@@ -255,7 +255,8 @@ struct InstitutionLogoHeader: View {
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                 }
-                if let mask, !mask.isEmpty {
+                // A name like "Chase ···8361" already shows the last four.
+                if let mask, !mask.isEmpty, !displayName.hasSuffix(mask) {
                     CardText("···\(mask)")
                         .font(.caption.monospaced())
                         .foregroundStyle(.tertiary)

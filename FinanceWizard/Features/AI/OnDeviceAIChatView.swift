@@ -25,6 +25,7 @@ struct OnDeviceAIChatView: View {
     var initialQuestion: String?
 
     @Environment(\.modelContext) private var financeContext
+    @Environment(\.dismiss) private var dismiss
 
     @State private var draft = ""
     @State private var messages: [AskBubble] = []
@@ -40,7 +41,8 @@ struct OnDeviceAIChatView: View {
     @State private var proposal: AskEditProposal?
     @State private var unnamedCount = 0
 
-    private let promptHints = [
+    /// Shown in turn as placeholder text, here and in the Ask field.
+    static let promptHints = [
         "What's my biggest category?",
         "How much did I spend this month?",
         "What recurring charges are coming up?",
@@ -52,11 +54,14 @@ struct OnDeviceAIChatView: View {
                 .navigationTitle("Ask")
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbar {
+                    ToolbarItem(placement: .cancellationAction) {
+                        Button("Done") { dismiss() }
+                    }
                     ToolbarItem(placement: .topBarTrailing) {
                         Button("Clear chat", systemImage: "trash") { confirmClear = true }
                             .disabled(messages.isEmpty || isSending)
                             .confirmationDialog("Clear this chat?", isPresented: $confirmClear) {
-                                Button("Clear Chat", role: .destructive) { clearChat() }
+                                Button("Clear chat", role: .destructive) { clearChat() }
                             }
                     }
                 }
@@ -74,9 +79,18 @@ struct OnDeviceAIChatView: View {
     private var chatBody: some View {
         VStack(spacing: 0) {
             if messages.isEmpty {
-                Spacer()
-                    .contentShape(Rectangle())
-                    .onTapGesture { composerFocused = false }
+                ContentUnavailableView {
+                    Label("Ask about your money", systemImage: "apple.intelligence")
+                } description: {
+                    Text("Answers come from your own transactions, worked out on this iPhone. Ask can also change a category, a budget limit, or a recurring bill once you say yes.")
+                } actions: {
+                    ForEach(Self.promptHints, id: \.self) { hint in
+                        Button(hint) { send(hint) }
+                            .buttonStyle(.bordered)
+                    }
+                }
+                .contentShape(Rectangle())
+                .onTapGesture { composerFocused = false }
             } else {
                 ScrollViewReader { proxy in
                     List {
@@ -143,7 +157,7 @@ struct OnDeviceAIChatView: View {
         HStack {
             ZStack(alignment: .leading) {
                 if draft.isEmpty {
-                    Text(promptHints[promptIndex])
+                    Text(Self.promptHints[promptIndex])
                         .foregroundStyle(.secondary)
                         .lineLimit(1)
                         .allowsHitTesting(false)
@@ -197,6 +211,8 @@ struct OnDeviceAIChatView: View {
             .padding(10)
             .background(message.isUser ? Color.accentColor.opacity(0.18) : Color.secondary.opacity(0.16))
             .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+            // A full-width bubble on a large screen makes lines too long to read.
+            .frame(maxWidth: 560, alignment: message.isUser ? .trailing : .leading)
             if !message.isUser { Spacer(minLength: 48) }
         }
     }
@@ -352,7 +368,7 @@ struct OnDeviceAIChatView: View {
             try? await Task.sleep(for: .seconds(3.5))
             guard draft.isEmpty else { continue }
             withAnimation(.easeInOut(duration: 0.5)) {
-                promptIndex = (promptIndex + 1) % promptHints.count
+                promptIndex = (promptIndex + 1) % Self.promptHints.count
             }
         }
     }

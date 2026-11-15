@@ -56,17 +56,13 @@ struct CategorySpendView: View {
                     MoneyText(snapshot.totalSpend)
                         .font(.title2.bold())
                 }
-                Text("\(snapshot.transactionCount) transactions · \(snapshot.categories.count) categories")
+                Text("\(snapshot.transactionCount == 1 ? "1 transaction" : "\(snapshot.transactionCount) transactions") · \(snapshot.categories.count == 1 ? "1 category" : "\(snapshot.categories.count) categories")")
                     .font(.caption)
                     .foregroundStyle(.secondary)
                 if snapshot.refunds > 0.005 {
-                    HStack(spacing: 4) {
-                        Text("After refunds of")
-                        MoneyText(snapshot.refunds)
-                        Text("· categories show spending before refunds")
-                    }
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                    Text("Total is after \(snapshot.refunds.formatted(.currency(code: "USD"))) in refunds. Categories show spending before refunds.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
                 }
             }
 
@@ -104,7 +100,8 @@ struct CategorySpendView: View {
                     )
                     .frame(minHeight: chartHeight)
                     .padding(.vertical, 8)
-                    .listRowInsets(EdgeInsets(top: 8, leading: 8, bottom: 8, trailing: 8))
+                    // The bar icons sit at the chart's leading edge, so they need the row's full inset.
+                    .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
                 }
             }
 
@@ -151,7 +148,7 @@ struct CategorySpendView: View {
                 .frame(width: 24)
             VStack(alignment: .leading, spacing: 2) {
                 Text(item.category)
-                Text("\(item.transactionCount) transactions")
+                Text(item.transactionCount == 1 ? "1 transaction" : "\(item.transactionCount) transactions")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }

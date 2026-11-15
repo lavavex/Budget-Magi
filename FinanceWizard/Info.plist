@@ -2,20 +2,27 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-	<!-- Matches Icon Composer file Mika.icon (App Icon name in target settings) -->
+	<key>CFBundleDocumentTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleTypeExtensions</key>
+			<array>
+				<string>fwbackup</string>
+			</array>
+			<key>CFBundleTypeName</key>
+			<string>Budget Magi Backup</string>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>LSHandlerRank</key>
+			<string>Owner</string>
+			<key>LSItemContentTypes</key>
+			<array>
+				<string>net.roberth.FinanceWizard.backup</string>
+			</array>
+		</dict>
+	</array>
 	<key>CFBundleIconName</key>
 	<string>Mika</string>
-	<!-- Export compliance: app does not use custom/non-exempt encryption -->
-	<key>ITSAppUsesNonExemptEncryption</key>
-	<false/>
-	<!-- Static system splash (before SwiftUI loads) — system background (light/dark) -->
-	<key>UILaunchScreen</key>
-	<dict>
-		<key>UIColorName</key>
-		<string>LaunchBackground</string>
-	</dict>
-
-	<!-- Hosted Link completion (ASWebAuthenticationSession callback) -->
 	<key>CFBundleURLTypes</key>
 	<array>
 		<dict>
@@ -27,21 +34,28 @@
 			</array>
 		</dict>
 	</array>
-
-	<!-- Open .fwbackup from Files / iCloud Drive / other apps -->
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
 	<key>LSSupportsOpeningDocumentsInPlace</key>
 	<true/>
+	<key>NSFinancialDataUsageDescription</key>
+	<string>Budget Magi reads your Apple Card balance and transactions from Wallet so they appear with your other accounts. The data stays on this iPhone.</string>
+	<key>UILaunchScreen</key>
+	<dict>
+		<key>UIColorName</key>
+		<string>LaunchBackground</string>
+	</dict>
 	<key>UTExportedTypeDeclarations</key>
 	<array>
 		<dict>
-			<key>UTTypeIdentifier</key>
-			<string>net.roberth.FinanceWizard.backup</string>
-			<key>UTTypeDescription</key>
-			<string>Budget Magi Backup</string>
 			<key>UTTypeConformsTo</key>
 			<array>
 				<string>public.data</string>
 			</array>
+			<key>UTTypeDescription</key>
+			<string>Budget Magi Backup</string>
+			<key>UTTypeIdentifier</key>
+			<string>net.roberth.FinanceWizard.backup</string>
 			<key>UTTypeTagSpecification</key>
 			<dict>
 				<key>public.filename-extension</key>
@@ -49,25 +63,6 @@
 					<string>fwbackup</string>
 				</array>
 			</dict>
-		</dict>
-	</array>
-	<key>CFBundleDocumentTypes</key>
-	<array>
-		<dict>
-			<key>CFBundleTypeName</key>
-			<string>Budget Magi Backup</string>
-			<key>CFBundleTypeRole</key>
-			<string>Editor</string>
-			<key>LSHandlerRank</key>
-			<string>Owner</string>
-			<key>LSItemContentTypes</key>
-			<array>
-				<string>net.roberth.FinanceWizard.backup</string>
-			</array>
-			<key>CFBundleTypeExtensions</key>
-			<array>
-				<string>fwbackup</string>
-			</array>
 		</dict>
 	</array>
 </dict>

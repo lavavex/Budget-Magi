@@ -97,10 +97,10 @@ Card bill payments only (`Shared/Models/CreditCardPayment.swift`). Never counted
 | Model | File | Role |
 |-------|------|------|
 | `BudgetPlan` | `Shared/Models/Budget.swift` | Monthly cap, category limits, expected income (Budget tab; Debug can reset) |
-| `RecurringStream` | `Shared/Models/RecurringStream.swift` | Stored recurring groups used with live detection on the Recurring tab |
+| `RecurringStream` | `Shared/Models/RecurringStream.swift` | Stored recurring groups used with live detection on the Upcoming tab |
 | `PayoffPlan` | `Shared/Models/PayoffPlan.swift` | User-declared My Loan / Pay Over Time / promo APR / custom payoff on a card |
 
-`PayoffPlan.kindRaw`: `myLoan` | `payOverTime` | `promoAPR` | `custom`. Remaining is user-updated (**Record payment** subtracts `monthlyPayment`; `monthlyFee` does not). Shown on Recurring like a bill. `linkedTransactionId` is the Pay Over Time purchase **or** the My Loan card charge.
+`PayoffPlan.kindRaw`: `myLoan` | `payOverTime` | `promoAPR` | `custom`. Remaining is user-updated (**Record payment** subtracts `monthlyPayment`; `monthlyFee` does not). Shown on Upcoming like a bill. `linkedTransactionId` is the Pay Over Time purchase **or** the My Loan card charge.
 
 `monthlyPayment` is the **full amount billed each statement**, interest / plan fee included — not the principal portion. `recordPayment()` takes interest out of it before reducing `remainingAmount`.
 

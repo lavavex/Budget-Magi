@@ -141,8 +141,12 @@ struct AccountBalancesTool: Tool {
     let description = "Current balances for linked bank and credit accounts. Use when the question is about cash on hand, what is owed, or account balances."
 
     let container: ModelContainer
+    let asked: AskQuestionBox?
 
-    init(modelContext: ModelContext) { container = modelContext.container }
+    init(modelContext: ModelContext, asked: AskQuestionBox? = nil) {
+        container = modelContext.container
+        self.asked = asked
+    }
 
     @Generable
     struct Arguments {
@@ -153,7 +157,11 @@ struct AccountBalancesTool: Tool {
     func call(arguments: Arguments) async throws -> AccountBalanceList {
         await MainActor.run {
             let modelContext = container.mainContext
-            let accounts = (try? modelContext.fetch(FetchDescriptor<BankAccount>())) ?? []
+            let all = (try? modelContext.fetch(FetchDescriptor<BankAccount>())) ?? []
+            // A question about one account gets only that account, so the model can't answer
+            // with the all-cards total instead.
+            let named = asked.map { AskLedger.accountsNamed(in: $0.question, among: all) } ?? []
+            let accounts = named.count == 1 ? named : all
             let rows = accounts.map { account in
                 AccountBalanceRow(
                     name: account.displayName,
@@ -312,9 +320,16 @@ struct SpendingQueryTool: Tool {
             // month nobody asked about. A question with no range wording gets one month.
             let wantsRange = asked.map { AskLedger.asksForSeveralMonths($0.question) } ?? true
             let range = AskLedger.monthRange(from: arguments.fromMonth, to: wantsRange ? arguments.toMonth ?? "" : "")
+            // The model sometimes drops the category and reports the month's whole total as, say,
+            // dining. With no filter at all, use a category the question itself names.
+            let merchant = arguments.merchant ?? ""
+            var category = arguments.category ?? ""
+            if merchant.isEmpty, category.isEmpty, let named = asked.flatMap({ AskLedger.categoryNamed(in: $0.question) }) {
+                category = named
+            }
             let result = AskLedger.spending(
-                merchant: arguments.merchant ?? "",
-                category: arguments.category ?? "",
+                merchant: merchant,
+                category: category,
                 range: range,
                 in: modelContext
             )

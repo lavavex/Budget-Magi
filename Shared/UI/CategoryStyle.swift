@@ -87,7 +87,8 @@ enum CategoryStyle {
         case "entertainment":
             return "theatermasks.fill"
         case "health":
-            return "heart.text.square.fill"
+            // Same as the Health category below; heart.text.square is Personal Care's.
+            return "cross.case.fill"
         case "other":
             return "ellipsis.circle.fill"
         default:

@@ -20,6 +20,7 @@ struct SettingsView: View {
     /// Relink must capture the Item here so the sheet doesn’t fall back to `.new`.
     @State private var linkSheetRequest: LinkSheetRequest?
     @State private var linkedItems: [PlaidLinkedItem] = []
+    @Query private var bankAccounts: [BankAccount]
     @State private var statusMessage: String?
     @State private var statusIsError = false
     @State private var itemPendingDelete: PlaidLinkedItem?
@@ -37,6 +38,9 @@ struct SettingsView: View {
     @State private var plaidBackupShareURL: URL?
     @State private var showPlaidBackupShare = false
     @State private var pendingRestoreURL: URL?
+    @State private var appleCardConnected = WalletSync.isConnected
+    @State private var appleCardError: String?
+    @State private var isConnectingAppleCard = false
     @State private var pendingRestorePayload: PlaidConnectionBackup.Payload?
     @State private var showRestorePlanSheet = false
     @State private var restorePolicy: PlaidConnectionBackup.RestorePolicy = .safeMerge
@@ -46,264 +50,42 @@ struct SettingsView: View {
     @State private var showsDeveloperTools = false
     @State private var showEraseAllData = false
 
+    @Environment(\.appWidth) private var appWidth
+    private var twoColumns: Bool { appWidth >= LayoutWidth.twoColumn }
+
+    /// The page shown beside the sidebar when Settings has two columns.
+    @State private var page: SettingsPage? = .banks
+
     var body: some View {
-        NavigationStack {
-            Form {
-                if sampleData.isActive {
-                    SampleDataBanner()
-                }
-
-                // MARK: Screenshot privacy
-                Section {
-                    Toggle(isOn: $screenshotPrivacy) {
-                        Label("Hide for screenshots", systemImage: "eye.slash")
-                    }
-                } header: {
-                    Text("Privacy")
-                }
-
-                // Sample data has no keys, banks, or backups of its own.
-                if !sampleData.isActive {
-                // MARK: Credentials
-                Section {
-                    TextField("client_id", text: $clientID)
-                        .textInputAutocapitalization(.never)
-                        .autocorrectionDisabled()
-                        .font(.body.monospaced())
-                    HStack {
-                        Group {
-                            if showSecret {
-                                TextField("secret", text: $secret)
-                            } else {
-                                SecureField("secret", text: $secret)
-                            }
+        Group {
+            if twoColumns {
+                twoColumnSettings
+            } else {
+                NavigationStack {
+                    Form {
+                        if sampleData.isActive {
+                            SampleDataBanner()
                         }
-                        .textInputAutocapitalization(.never)
-                        .autocorrectionDisabled()
-                        .font(.body.monospaced())
-
-                        Button {
-                            showSecret.toggle()
-                        } label: {
-                            Image(systemName: showSecret ? "eye.slash" : "eye")
+                        // Sample data has no keys, banks, or backups of its own.
+                        if !sampleData.isActive {
+                            plaidSection
+                            banksSection
+                            statusSection
+                            appleCardSection
+                            backupSection
                         }
-                        .buttonStyle(.borderless)
-                    }
-
-                    Picker("Environment", selection: $environment) {
-                        ForEach(PlaidEnvironment.allCases) { env in
-                            Text(env.displayName).tag(env)
+                        aboutSection
+                        aiSection
+                        developerSection
+                        // Last, well away from everything else.
+                        if !sampleData.isActive {
+                            eraseSection
                         }
                     }
-
-                    TextField("OAuth redirect override", text: $redirectURI)
-                        .textInputAutocapitalization(.never)
-                        .autocorrectionDisabled()
-                        .font(.body.monospaced())
-                        .keyboardType(.URL)
-                        .textContentType(.URL)
-
-                    Button("Save credentials") {
-                        saveCredentials()
-                    }
-
-                    if didSave {
-                        Label("Saved", systemImage: "checkmark.circle.fill")
-                            .foregroundStyle(.green)
-                    }
-                } header: {
-                    Text("Plaid account")
-                }
-
-                // MARK: Linked banks
-                Section {
-                    if linkedItems.isEmpty {
-                        Text("No banks linked yet.")
-                            .foregroundStyle(.secondary)
-                        Button("Try with Sample Data") { sampleData.start() }
-                    } else {
-                        ForEach(linkedItems) { item in
-                            HStack(spacing: 12) {
-                                BankIconView(
-                                    paymentMethod: item.institutionName,
-                                    size: 36,
-                                    displayName: item.institutionName,
-                                    institutionName: item.institutionName
-                                )
-                                VStack(alignment: .leading, spacing: 4) {
-                                    Text(item.institutionName)
-                                        .font(.body.weight(.semibold))
-                                    if item.needsRelink {
-                                        Text(item.errorMessage ?? "Login expired — Relink required")
-                                            .font(.caption.weight(.semibold))
-                                            .foregroundStyle(.orange)
-                                    } else if !item.accountNames.isEmpty {
-                                        Text(item.accountNames.joined(separator: ", "))
-                                            .font(.caption)
-                                            .foregroundStyle(.secondary)
-                                    }
-                                    Text("Linked \(item.linkedAt.formatted(date: .abbreviated, time: .omitted))")
-                                        .font(.caption2)
-                                        .foregroundStyle(.tertiary)
-                                }
-                                Spacer(minLength: 0)
-                            }
-                            .contentShape(Rectangle())
-                            .contextMenu {
-                                Button {
-                                    startRelink(item)
-                                } label: {
-                                    Label("Relink…", systemImage: "arrow.triangle.2.circlepath")
-                                }
-                                .disabled(!PlaidCredentialsStore.isConfigured)
-
-                                Button(role: .destructive) {
-                                    itemPendingDelete = item
-                                } label: {
-                                    Label("Unlink", systemImage: "trash")
-                                }
-                            }
-                            .swipeActions(edge: .leading, allowsFullSwipe: false) {
-                                Button {
-                                    startRelink(item)
-                                } label: {
-                                    Label("Relink", systemImage: "arrow.triangle.2.circlepath")
-                                }
-                                .tint(.gray)
-                                .disabled(!PlaidCredentialsStore.isConfigured)
-                            }
-                            .swipeActions(edge: .trailing, allowsFullSwipe: true) {
-                                Button(role: .destructive) {
-                                    itemPendingDelete = item
-                                } label: {
-                                    Label("Unlink", systemImage: "trash")
-                                }
-                            }
-                        }
-                    }
-
-                    Button {
-                        linkSheetRequest = LinkSheetRequest(mode: .new)
-                    } label: {
-                        Label("Link bank account", systemImage: "plus.circle.fill")
-                    }
-                    .disabled(!PlaidCredentialsStore.isConfigured)
-                } header: {
-                    Text("Linked banks")
-                }
-
-                // MARK: Sync info
-                Section {
-                    LabeledContent("Credentials") {
-                        Text(PlaidCredentialsStore.isConfigured ? "Configured" : "Missing")
-                            .foregroundStyle(PlaidCredentialsStore.isConfigured ? .green : .orange)
-                    }
-                    LabeledContent("Environment") {
-                        Text(PlaidCredentialsStore.environment.displayName)
-                            .foregroundStyle(.secondary)
-                    }
-                    LabeledContent("Linked items") {
-                        Text("\(linkedItems.count)")
-                            .foregroundStyle(.secondary)
-                    }
-                } header: {
-                    Text("Status")
-                }
-
-                // MARK: Full backup
-                Section {
-                    Button {
-                        showBackupPasswordSheet = true
-                    } label: {
-                        if isWorkingPlaidBackup {
-                            HStack {
-                                ProgressView()
-                                Text("Working…")
-                            }
-                        } else {
-                            Label("Back up everything", systemImage: "lock.shield")
-                        }
-                    }
-                    .disabled(isWorkingPlaidBackup)
-
-                    Button {
-                        showRestoreConfirm = true
-                    } label: {
-                        Label("Restore from backup", systemImage: "arrow.counterclockwise.circle")
-                    }
-                    .disabled(isWorkingPlaidBackup)
-                } header: {
-                    Text("Backup & restore")
-                }
-
-                Section {
-                    Button("Erase All Data", role: .destructive) { showEraseAllData = true }
-                } footer: {
-                    Text("Deletes everything on this device, including your banks and keys.")
-                }
-
-                }
-
-                if let statusMessage {
-                    Section {
-                        Text(statusMessage)
-                            .font(.caption)
-                            .foregroundStyle(statusIsError ? .red : .secondary)
-                    }
-                }
-
-                // MARK: About
-                Section {
-                    NavigationLink {
-                        AboutBuildView()
-                    } label: {
-                        HStack {
-                            Text("About")
-                            Spacer()
-                            Text(AppBuildInfo.versionBuildLabel)
-                                .font(.subheadline.monospaced())
-                                .foregroundStyle(.secondary)
-                        }
-                    }
-
-                    if showsDeveloperTools, !sampleData.isActive {
-                    Button {
-                        showDebugExportConfirm = true
-                    } label: {
-                        if isExportingDebug {
-                            HStack {
-                                ProgressView()
-                                Text("Preparing export…")
-                            }
-                        } else {
-                            Label("Export database for debug", systemImage: "square.and.arrow.up")
-                        }
-                    }
-                    .disabled(isExportingDebug)
-                    }
-                } header: {
-                    Text("About")
-                }
-                
-                Section {
-                    OnDeviceAIStatusView()
-                } header: {
-                    Text("On-device AI")
-                }
-
-                if showsDeveloperTools, !sampleData.isActive {
-                    Section {
-                        NavigationLink {
-                            DebugMenuView()
-                        } label: {
-                            Label("Debug", systemImage: "ant")
-                        }
-                    } header: {
-                        Text("Developer")
-                    }
+                    .navigationTitle("Settings")
                 }
             }
-            .navigationTitle("Settings")
+        }
             .task { showsDeveloperTools = await DeveloperTools.isAvailable() }
             .sheet(isPresented: $showEraseAllData, onDismiss: reload) {
                 EraseAllDataView()
@@ -467,6 +249,416 @@ struct SettingsView: View {
                     statusMessage = error.localizedDescription
                 }
             }
+    }
+
+    // MARK: - Two columns, laid out like the Settings app
+
+    private var pages: [[SettingsPage]] {
+        var groups: [[SettingsPage]] = []
+        if !sampleData.isActive {
+            groups.append([.banks] + (WalletSync.isAvailable ? [.appleCard] : []) + [.plaid])
+            groups.append([.backup, .ai])
+            groups.append([.about, .developer])
+            groups.append([.erase])
+        } else {
+            groups.append([.ai])
+            groups.append([.about, .developer])
+        }
+        return groups
+    }
+
+    private var twoColumnSettings: some View {
+        NavigationSplitView {
+            List(selection: $page) {
+                if sampleData.isActive {
+                    SampleDataBanner()
+                }
+                Section {
+                    SettingsAppHeader()
+                        .tag(SettingsPage.about)
+                }
+                ForEach(pages, id: \.self) { group in
+                    Section {
+                        ForEach(group) { item in
+                            SettingsPageRow(page: item)
+                                .tag(item)
+                        }
+                    }
+                }
+            }
+            .listStyle(.insetGrouped)
+            .containerBackground(Color(.systemGroupedBackground), for: .navigation)
+            .navigationTitle("Settings")
+            .navigationSplitViewColumnWidth(min: 300, ideal: 340, max: 400)
+            .toolbar(removing: .sidebarToggle)
+        } detail: {
+            NavigationStack {
+                Form {
+                    switch page ?? .banks {
+                    case .banks:
+                        banksSection
+                        statusSection
+                    case .appleCard:
+                        appleCardSection
+                        statusSection
+                    case .plaid:
+                        plaidSection
+                        statusSection
+                    case .backup:
+                        backupSection
+                        statusSection
+                    case .ai:
+                        aiSection
+                    case .about:
+                        aboutSection
+                    case .developer:
+                        developerSection
+                    case .erase:
+                        eraseSection
+                    }
+                }
+                .navigationTitle((page ?? .banks).title)
+                .navigationBarTitleDisplayMode(.inline)
+            }
+        }
+        .navigationSplitViewStyle(.balanced)
+    }
+
+    // MARK: - Sections
+
+    /// The user's own Plaid keys.
+    @ViewBuilder
+    private var plaidSection: some View {
+                // MARK: Credentials
+                Section {
+                    LabeledContent("Client ID") {
+                        TextField("client_id", text: $clientID)
+                            .textInputAutocapitalization(.never)
+                            .autocorrectionDisabled()
+                            .font(.body.monospaced())
+                            .multilineTextAlignment(.trailing)
+                    }
+                    HStack {
+                        Text("Secret")
+                        Group {
+                            if showSecret {
+                                TextField("secret", text: $secret)
+                            } else {
+                                SecureField("secret", text: $secret)
+                            }
+                        }
+                        .textInputAutocapitalization(.never)
+                        .autocorrectionDisabled()
+                        .font(.body.monospaced())
+                        .multilineTextAlignment(.trailing)
+
+                        Button {
+                            showSecret.toggle()
+                        } label: {
+                            Image(systemName: showSecret ? "eye.slash" : "eye")
+                        }
+                        .buttonStyle(.borderless)
+                    }
+
+                    Picker("Environment", selection: $environment) {
+                        ForEach(PlaidEnvironment.allCases) { env in
+                            Text(env.displayName).tag(env)
+                        }
+                    }
+
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Redirect URL")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                        TextField("OAuth redirect override", text: $redirectURI)
+                            .textInputAutocapitalization(.never)
+                            .autocorrectionDisabled()
+                            .font(.body.monospaced())
+                            .keyboardType(.URL)
+                            .textContentType(.URL)
+                    }
+
+                    Button("Save credentials") {
+                        saveCredentials()
+                    }
+
+                    if didSave {
+                        Label("Saved", systemImage: "checkmark.circle.fill")
+                            .foregroundStyle(.green)
+                    }
+                } header: {
+                    // Beside the sidebar the page title already says this.
+                    if !twoColumns { Text("Plaid account") }
+                }
+    }
+
+    /// Linked banks, with relink and unlink.
+    @ViewBuilder
+    private var banksSection: some View {
+                // MARK: Linked banks
+                Section {
+                    if linkedItems.isEmpty {
+                        Text("No banks linked yet.")
+                            .foregroundStyle(.secondary)
+                        Button("Try with sample data") { sampleData.start() }
+                    } else {
+                        ForEach(linkedItems) { item in
+                            HStack(spacing: 12) {
+                                BankIconView(
+                                    paymentMethod: item.institutionName,
+                                    size: 36,
+                                    displayName: item.institutionName,
+                                    institutionName: item.institutionName
+                                )
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Text(item.institutionName)
+                                        .font(.body.weight(.semibold))
+                                    if item.needsRelink {
+                                        Text(item.errorMessage ?? "Login expired — Relink required")
+                                            .font(.caption.weight(.semibold))
+                                            .foregroundStyle(.orange)
+                                        Button("Relink") { startRelink(item) }
+                                            .font(.caption.weight(.semibold))
+                                            .buttonStyle(.bordered)
+                                            .controlSize(.small)
+                                            .disabled(!PlaidCredentialsStore.isConfigured)
+                                    } else if !accountNames(for: item).isEmpty {
+                                        Text(accountNames(for: item).joined(separator: ", "))
+                                            .font(.caption)
+                                            .foregroundStyle(.secondary)
+                                    }
+                                    Text("Linked \(item.linkedAt.formatted(date: .abbreviated, time: .omitted))")
+                                        .font(.caption2)
+                                        .foregroundStyle(.tertiary)
+                                }
+                                Spacer(minLength: 0)
+                            }
+                            .contentShape(Rectangle())
+                            .contextMenu {
+                                Button {
+                                    startRelink(item)
+                                } label: {
+                                    Label("Relink…", systemImage: "arrow.triangle.2.circlepath")
+                                }
+                                .disabled(!PlaidCredentialsStore.isConfigured)
+
+                                Button(role: .destructive) {
+                                    itemPendingDelete = item
+                                } label: {
+                                    Label("Unlink", systemImage: "trash")
+                                }
+                            }
+                            .swipeActions(edge: .leading, allowsFullSwipe: false) {
+                                Button {
+                                    startRelink(item)
+                                } label: {
+                                    Label("Relink", systemImage: "arrow.triangle.2.circlepath")
+                                }
+                                .tint(.gray)
+                                .disabled(!PlaidCredentialsStore.isConfigured)
+                            }
+                            .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+                                Button(role: .destructive) {
+                                    itemPendingDelete = item
+                                } label: {
+                                    Label("Unlink", systemImage: "trash")
+                                }
+                            }
+                        }
+                    }
+
+                    Button {
+                        linkSheetRequest = LinkSheetRequest(mode: .new)
+                    } label: {
+                        Label("Link bank account", systemImage: "plus.circle.fill")
+                    }
+                    .disabled(!PlaidCredentialsStore.isConfigured)
+                } header: {
+                    // Beside the sidebar the page title already says this.
+                    if !twoColumns { Text("Linked banks") }
+                }
+    }
+
+    /// The result of the last link, save, or backup, near those controls.
+    @ViewBuilder
+    private var statusSection: some View {
+                // Results of linking, saving keys and backups, kept near those controls.
+                if let statusMessage {
+                    Section {
+                        Text(statusMessage)
+                            .font(.caption)
+                            .foregroundStyle(statusIsError ? .red : .secondary)
+                    }
+                }
+    }
+
+    /// Apple Card from Wallet, where FinanceKit runs.
+    @ViewBuilder
+    private var appleCardSection: some View {
+                // MARK: Apple Card
+                if WalletSync.isAvailable, !sampleData.isActive {
+                    Section {
+                        if appleCardConnected {
+                            LabeledContent("Apple Card") {
+                                Text("Connected").foregroundStyle(.green)
+                            }
+                            Button("Disconnect Apple Card", role: .destructive) {
+                                WalletSync.disconnect(modelContext: modelContext)
+                                appleCardConnected = false
+                            }
+                        } else {
+                            Button {
+                                Task {
+                                    isConnectingAppleCard = true
+                                    defer { isConnectingAppleCard = false }
+                                    appleCardError = nil
+                                    do {
+                                        try await WalletSync.connect()
+                                        appleCardConnected = true
+                                        let report = try await WalletSync.sync(modelContext: modelContext)
+                                        statusIsError = false
+                                        statusMessage = (["Apple Card connected."] + report.lines).joined(separator: " ")
+                                    } catch {
+                                        appleCardError = error.localizedDescription
+                                    }
+                                }
+                            } label: {
+                                if isConnectingAppleCard {
+                                    HStack {
+                                        ProgressView()
+                                        Text("Reading Apple Card…")
+                                    }
+                                } else {
+                                    Label("Connect Apple Card", systemImage: "creditcard")
+                                }
+                            }
+                            .disabled(isConnectingAppleCard)
+                        }
+                        if let appleCardError {
+                            Text(appleCardError)
+                                .font(.caption)
+                                .foregroundStyle(.orange)
+                        }
+                    } header: {
+                        // Beside the sidebar the page title already says this.
+                        if !twoColumns { Text("Apple Card") }
+                    } footer: {
+                        Text("Reads your Apple Card balance and transactions from Wallet on this iPhone. Nothing is sent anywhere, and it updates each time you Sync.")
+                    }
+                }
+    }
+
+    /// Encrypted backup and restore.
+    @ViewBuilder
+    private var backupSection: some View {
+                // MARK: Full backup
+                Section {
+                    Button {
+                        showBackupPasswordSheet = true
+                    } label: {
+                        if isWorkingPlaidBackup {
+                            HStack {
+                                ProgressView()
+                                Text("Working…")
+                            }
+                        } else {
+                            Label("Back up everything", systemImage: "lock.shield")
+                        }
+                    }
+                    .disabled(isWorkingPlaidBackup)
+
+                    Button {
+                        showRestoreConfirm = true
+                    } label: {
+                        Label("Restore from backup", systemImage: "arrow.counterclockwise.circle")
+                    }
+                    .disabled(isWorkingPlaidBackup)
+                } header: {
+                    // Beside the sidebar the page title already says this.
+                    if !twoColumns { Text("Backup & restore") }
+                }
+    }
+
+    /// Deletes everything after typing DELETE.
+    @ViewBuilder
+    private var eraseSection: some View {
+                Section {
+                    Button("Erase all data", role: .destructive) { showEraseAllData = true }
+                } footer: {
+                    Text("Deletes everything on this device, including your banks and keys.")
+                }
+    }
+
+    /// Version, help, and privacy policy.
+    @ViewBuilder
+    private var aboutSection: some View {
+                // MARK: About
+                Section {
+                    NavigationLink {
+                        AboutBuildView()
+                    } label: {
+                        HStack {
+                            Text("About")
+                            Spacer()
+                            Text(AppBuildInfo.versionBuildLabel)
+                                .font(.subheadline.monospaced())
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+
+                    Link(destination: URL(string: "https://budgetmagi.pages.dev/support.html")!) {
+                        Label("Help & support", systemImage: "questionmark.circle")
+                    }
+                    Link(destination: URL(string: "https://budgetmagi.pages.dev/privacy.html")!) {
+                        Label("Privacy policy", systemImage: "hand.raised")
+                    }
+                }
+    }
+
+    /// Whether Apple Intelligence can run here.
+    @ViewBuilder
+    private var aiSection: some View {
+                Section {
+                    OnDeviceAIStatusView()
+                } header: {
+                    // Beside the sidebar the page title already says this.
+                    if !twoColumns { Text("On-device AI") }
+                }
+    }
+
+    /// Debug tools for testers.
+    @ViewBuilder
+    private var developerSection: some View {
+        Section {
+            Toggle(isOn: $screenshotPrivacy) {
+                Label("Hide for screenshots", systemImage: "eye.slash")
+            }
+            // Debug tools only where DeveloperTools allows them; the toggle above is for everyone.
+            if showsDeveloperTools, !sampleData.isActive {
+                NavigationLink {
+                    DebugMenuView()
+                } label: {
+                    Label("Debug", systemImage: "ant")
+                }
+                Button {
+                    showDebugExportConfirm = true
+                } label: {
+                    if isExportingDebug {
+                        HStack {
+                            ProgressView()
+                            Text("Preparing export…")
+                        }
+                    } else {
+                        Label("Export database for debug", systemImage: "square.and.arrow.up")
+                    }
+                }
+                .disabled(isExportingDebug)
+            }
+        } header: {
+            // Beside the sidebar the page title already says this.
+            if !twoColumns { Text("Developer") }
+        } footer: {
+            Text("Hide for screenshots masks dollar amounts and card numbers, so you can share a picture of the app.")
         }
     }
 
@@ -579,10 +771,10 @@ struct SettingsView: View {
             parts.append("added \(names)")
         }
         if summary.itemsPreserved > 0 {
-            parts.append("kept \(summary.itemsPreserved) existing token(s)")
+            parts.append(summary.itemsPreserved == 1 ? "kept 1 bank already on this iPhone" : "kept \(summary.itemsPreserved) banks already on this iPhone")
         }
         if summary.itemsTokenReplaced > 0 {
-            parts.append("replaced \(summary.itemsTokenReplaced) token(s)")
+            parts.append(summary.itemsTokenReplaced == 1 ? "reconnected 1 bank" : "reconnected \(summary.itemsTokenReplaced) banks")
         }
         if summary.credentialsWritten {
             parts.append("API keys written")
@@ -590,16 +782,16 @@ struct SettingsView: View {
             parts.append("API keys left unchanged")
         }
         if summary.transactionsUpserted > 0 {
-            parts.append("\(summary.transactionsUpserted) transactions")
+            parts.append(summary.transactionsUpserted == 1 ? "1 transaction" : "\(summary.transactionsUpserted) transactions")
         }
         if summary.incomeUpserted > 0 {
-            parts.append("\(summary.incomeUpserted) income")
+            parts.append(summary.incomeUpserted == 1 ? "1 deposit" : "\(summary.incomeUpserted) deposits")
         }
         if summary.bankAccountsUpserted > 0 {
-            parts.append("\(summary.bankAccountsUpserted) accounts")
+            parts.append(summary.bankAccountsUpserted == 1 ? "1 account" : "\(summary.bankAccountsUpserted) accounts")
         }
         if summary.payoffPlansUpserted > 0 {
-            parts.append("\(summary.payoffPlansUpserted) payoff plans")
+            parts.append(summary.payoffPlansUpserted == 1 ? "1 payoff plan" : "\(summary.payoffPlansUpserted) payoff plans")
         }
         let detail = parts.isEmpty ? "nothing new to apply" : parts.joined(separator: " · ")
         let policyLabel: String = {
@@ -609,7 +801,7 @@ struct SettingsView: View {
             case .wipeThenRestore: return "wipe then restore"
             }
         }()
-        return "Restore complete (\(policyLabel)): \(detail). \(summary.environment). Tap Sync if needed."
+        return "Restored with \(policyLabel): \(detail). Sync brings your banks up to date."
     }
 
     /// Reloads credentials and linked banks from stores into local @State for the form.
@@ -629,6 +821,12 @@ struct SettingsView: View {
     }
 
     /// Writes the form fields into PlaidCredentialsStore (device-local storage).
+    /// The bank's accounts by the names used everywhere else, nicknames included.
+    private func accountNames(for item: PlaidLinkedItem) -> [String] {
+        let names = bankAccounts.filter { $0.itemId == item.id }.map(\.displayName).sorted()
+        return names.isEmpty ? item.accountNames : names
+    }
+
     private func saveCredentials() {
         PlaidCredentialsStore.clientID = clientID
         PlaidCredentialsStore.secret = secret
@@ -701,6 +899,92 @@ struct SettingsView: View {
                 statusMessage = "Unlinked \(item.institutionName)."
             }
         }
+    }
+}
+
+// MARK: - Settings pages (two columns)
+
+/// One page in the Settings sidebar, with the icon tile the Settings app would give it.
+enum SettingsPage: String, Hashable, Identifiable {
+    case banks, appleCard, plaid, backup, ai, about, developer, erase
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .banks: "Linked banks"
+        case .appleCard: "Apple Card"
+        case .plaid: "Plaid account"
+        case .backup: "Backup & restore"
+        case .ai: "On-device AI"
+        case .about: "About"
+        case .developer: "Developer"
+        case .erase: "Erase all data"
+        }
+    }
+
+    var systemImage: String {
+        switch self {
+        case .banks: "building.columns.fill"
+        case .appleCard: "creditcard.fill"
+        case .plaid: "key.fill"
+        case .backup: "lock.shield.fill"
+        case .ai: "apple.intelligence"
+        case .about: "info"
+        case .developer: "hammer.fill"
+        case .erase: "trash.fill"
+        }
+    }
+
+    var tint: Color {
+        switch self {
+        case .banks: .blue
+        case .appleCard: .black
+        case .plaid: .gray
+        case .backup: .green
+        case .ai: .purple
+        case .about: .gray
+        case .developer: .orange
+        case .erase: .red
+        }
+    }
+}
+
+/// A Settings-app row: a white symbol on a colored rounded square, then the title.
+private struct SettingsPageRow: View {
+    let page: SettingsPage
+
+    var body: some View {
+        Label {
+            Text(page.title)
+        } icon: {
+            Image(systemName: page.systemImage)
+                .font(.system(size: 15, weight: .semibold))
+                .foregroundStyle(.white)
+                .frame(width: 29, height: 29)
+                .background(page.tint.gradient, in: RoundedRectangle(cornerRadius: 7, style: .continuous))
+        }
+    }
+}
+
+/// The top of the sidebar, where the Settings app shows your account: the app and its version.
+private struct SettingsAppHeader: View {
+    var body: some View {
+        HStack(spacing: 14) {
+            Image("AppIconImage")
+                .resizable()
+                .scaledToFit()
+                .frame(width: 56, height: 56)
+                .clipShape(RoundedRectangle(cornerRadius: 56 * 0.2237, style: .continuous))
+            VStack(alignment: .leading, spacing: 2) {
+                Text(AppBuildInfo.displayName)
+                    .font(.title3.weight(.semibold))
+                Text("Version \(AppBuildInfo.versionBuildLabel)")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .padding(.vertical, 4)
     }
 }
 
@@ -1016,11 +1300,6 @@ struct AboutBuildView: View {
                 }
                 LabeledContent("Build") {
                     Text(AppBuildInfo.buildNumber)
-                        .font(.body.monospaced())
-                        .textSelection(.enabled)
-                }
-                LabeledContent("Version (build)") {
-                    Text(AppBuildInfo.versionBuildLabel)
                         .font(.body.monospaced())
                         .textSelection(.enabled)
                 }

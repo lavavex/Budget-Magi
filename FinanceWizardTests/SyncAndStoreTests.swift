@@ -208,6 +208,19 @@ final class SyncAndStoreTests: XCTestCase {
         XCTAssertEqual(paired(rows), [])
     }
 
+    func testAnExactOddAmountOutranksACategoryTheUserSet() {
+        let payment = KnownCategory.creditCardPayment.rawValue
+        let rows = bankAndCardRows([
+            ("Bill Payment", 934.71, 6, "card", payment),
+            ("PAYMENT", 934.71, 9, "checking", "Home Internet"),
+            ("Bill Payment", 200, 6, "card", payment),
+            ("PAYMENT", 200, 9, "checking", "Home Internet"),
+        ])
+        rows[1].categoryLocked = true
+        rows[3].categoryLocked = true
+        XCTAssertEqual(paired(rows), ["row-1"])
+    }
+
     func testPairingRefilesTheBankRowWithoutASecondPaymentRecord() throws {
         context.insert(BankAccount(
             accountId: "card", itemId: "item", name: "Example Card", mask: "1111", type: "credit",
@@ -315,5 +328,34 @@ final class SyncAndStoreTests: XCTestCase {
         XCTAssertFalse(FileManager.default.fileExists(atPath: export.path))
         XCTAssertFalse(FileManager.default.fileExists(atPath: zip.path))
         XCTAssertTrue(FileManager.default.fileExists(atPath: other.path))
+    }
+
+    // MARK: - One Sync for every screen
+
+    func testSyncOutcomeLeadsWithThePlainHeadline() {
+        var report = PlaidSyncReport()
+        report.itemLines = ["Example Bank", "Other Bank"]
+        report.expensesUpserted = 1944
+        let outcome = AppSync.Outcome(report: report, walletNote: " Apple Card is up to date too.")
+
+        XCTAssertTrue(outcome.succeeded)
+        XCTAssertEqual(outcome.headline, "2 banks up to date. Apple Card is up to date too.")
+        XCTAssertFalse(outcome.headline.contains("upserted"))
+        XCTAssertTrue(outcome.counters.contains("Expenses upserted: 1944"))
+    }
+
+    func testFailedSyncShowsTheError() {
+        struct Offline: LocalizedError { var errorDescription: String? { "The bank is offline." } }
+        let outcome = AppSync.Outcome(error: Offline(), walletLines: ["Apple Card: 3 updated"])
+
+        if PlaidItemStore.linkedItemIDs.isEmpty {
+            // Apple Card alone isn't a failure.
+            XCTAssertTrue(outcome.succeeded)
+        } else {
+            XCTAssertFalse(outcome.succeeded)
+            XCTAssertEqual(outcome.headline, "Apple Card: 3 updated\nThe bank is offline.")
+        }
+        XCTAssertFalse(AppSync.Outcome(error: Offline()).succeeded)
+        XCTAssertEqual(AppSync.Outcome(error: Offline()).headline, "The bank is offline.")
     }
 }

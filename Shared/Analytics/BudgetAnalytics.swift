@@ -46,6 +46,8 @@ struct BudgetSnapshot {
     let income: Double
     /// Planned income for the period from expected streams.
     let expectedIncome: Double
+    /// Expected from paydays before today, so a paycheck that isn't due yet doesn't count as missing.
+    let expectedSoFar: Double
     /// Sum of stream monthly estimates (always monthly cadence).
     let expectedMonthlyIncome: Double
     /// Soonest next payday across streams (if any).
@@ -74,10 +76,10 @@ struct BudgetSnapshot {
         return totalSpent > monthlyLimit + 0.005
     }
 
-    /// Actual − expected for the period (positive = more income than planned).
+    /// Actual − expected so far (positive = more income than planned).
     var incomeVsExpected: Double? {
         guard expectedIncome > 0.005 || !expectedMonthlyIncome.isZero else { return nil }
-        return income - expectedIncome
+        return income - expectedSoFar
     }
 }
 
@@ -148,6 +150,9 @@ enum BudgetAnalytics {
         let expectedInPeriod = streams.reduce(0.0) {
             $0 + $1.expectedAmount(in: period, referenceDate: referenceDate)
         }
+        let expectedSoFar = streams.reduce(0.0) {
+            $0 + $1.expectedAmount(in: period, referenceDate: referenceDate, before: Date())
+        }
         let expectedMonthly = plan.expectedMonthlyIncome
         let nextPayday = streams
             .compactMap { $0.nextDate(from: Date()) }
@@ -164,6 +169,7 @@ enum BudgetAnalytics {
             }(),
             income: income,
             expectedIncome: expectedInPeriod,
+            expectedSoFar: expectedSoFar,
             expectedMonthlyIncome: expectedMonthly,
             nextPayday: nextPayday,
             categories: categories,

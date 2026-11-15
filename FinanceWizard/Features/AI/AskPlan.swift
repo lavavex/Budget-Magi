@@ -132,7 +132,7 @@ enum AskPlan {
         let extraTotal = extra.reduce(0) { $0 + $1.monthlyPayment }
         var fixedLines = bills.prefix(8).map { "\($0.displayVendor): \(dollars($0.estimatedMonthly))" }
         if bills.count > 8 {
-            fixedLines.append("\(bills.count - 8) smaller ones: \(dollars(bills.dropFirst(8).reduce(0) { $0 + $1.estimatedMonthly }))")
+            fixedLines.append("\(bills.count - 8 == 1 ? "1 smaller one" : "\(bills.count - 8) smaller ones"): \(dollars(bills.dropFirst(8).reduce(0) { $0 + $1.estimatedMonthly }))")
         }
         fixedLines += minimums.map { "\($0.name) minimum: \(dollars($0.amount))" }
         fixedLines += extra.map { "\($0.name): \(dollars($0.monthlyPayment))" }

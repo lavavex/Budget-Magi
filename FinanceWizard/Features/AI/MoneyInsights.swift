@@ -12,10 +12,14 @@ struct MoneyInsight: Equatable {
     struct Section: Equatable {
         var title: String
         var lines: [String]
+        /// The charge each line describes, in the same order, when the lines are single charges.
+        var transactionIds: [String] = []
     }
 
     var headline: String
     var sections: [Section]
+    /// False when the period has no rows at all, so there's nothing to explain or summarize.
+    var hasActivity = true
 
     /// Everything a model may use to write a summary.
     var facts: [String] {
@@ -64,15 +68,21 @@ enum MoneyInsights {
             first.size == second.size ? first.name < second.name : first.size > second.size
         }
         return sorted.prefix(limit).map { change in
+            if change.old < 0.005 { return "\(change.name): \(money(change.new)), new this month" }
+            if change.new < 0.005 { return "\(change.name): nothing, down from \(money(change.old))" }
             let word = change.new > change.old ? "up" : "down"
-            return "\(change.name) \(word) \(money(abs(change.new - change.old))), \(money(change.old)) to \(money(change.new))"
+            return "\(change.name): \(money(change.new)), \(word) \(money(abs(change.new - change.old))) from \(money(change.old))"
         }
     }
 
-    private static func largest(_ rows: [Transaction], limit: Int) -> [String] {
-        rows.sorted { abs($0.amount) > abs($1.amount) }.prefix(limit).map {
-            "\($0.title), \(money(abs($0.amount)))"
-        }
+    private static func largest(_ rows: [Transaction], limit: Int) -> MoneyInsight.Section? {
+        let top = rows.sorted { abs($0.amount) > abs($1.amount) }.prefix(limit)
+        guard !top.isEmpty else { return nil }
+        return .init(
+            title: "Largest charges",
+            lines: top.map { "\($0.title), \(money(abs($0.amount)))" },
+            transactionIds: top.map(\.transactionId)
+        )
     }
 
     // MARK: - Why is this number what it is?
@@ -107,8 +117,7 @@ enum MoneyInsights {
         }
         let merchants = changes(now: nowRows, before: beforeRows, by: \.title, limit: 4)
         if !merchants.isEmpty { sections.append(.init(title: "Biggest merchant changes", lines: merchants)) }
-        let top = largest(nowRows, limit: 3)
-        if !top.isEmpty { sections.append(.init(title: "Largest charges", lines: top)) }
+        if let top = largest(nowRows, limit: 3) { sections.append(top) }
 
         return MoneyInsight(
             headline: "You spent \(money(total)) \(subject)in \(monthLabel(month)), \(direction) \(monthLabel(earlier)) (\(money(before))).",
@@ -167,6 +176,14 @@ enum MoneyInsights {
             .filter { interval?.contains($0.date) == true && !IncomeAnalytics.nonEarningsCategories.contains($0.category) }
             .reduce(0) { $0 + $1.amount }
 
+        guard !rows(all, in: month).isEmpty || earned > 0.005 else {
+            return MoneyInsight(
+                headline: "No activity in \(monthLabel(month)).",
+                sections: [],
+                hasActivity: false
+            )
+        }
+
         let change = spent - spentBefore
         let net = earned - spent
         var sections: [MoneyInsight.Section] = [
@@ -182,8 +199,7 @@ enum MoneyInsights {
         if !prices.isEmpty { sections.append(.init(title: "Price changes", lines: prices)) }
         let merchants = newMerchants(all, nowRows: nowRows, month: month, calendar: calendar)
         if !merchants.isEmpty { sections.append(.init(title: "New this month", lines: merchants)) }
-        let top = largest(nowRows, limit: 3)
-        if !top.isEmpty { sections.append(.init(title: "Largest charges", lines: top)) }
+        if let top = largest(nowRows, limit: 3) { sections.append(top) }
         if let budget {
             let over = budget.categories.compactMap { item -> String? in
                 guard let limit = item.limit, item.spent > limit + 0.005 else { return nil }
