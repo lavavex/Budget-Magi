@@ -31,7 +31,6 @@ For each linked Plaid Item:
     pending_transaction_id → drop pending twin when posted arrives
     removed → delete local row
   /accounts/get + /liabilities/get
-  /transactions/recurring/get → RecurringStream (add-on; soft-fail)
   save next_cursor for that Item
 Reload widget timelines
 ```
@@ -74,7 +73,6 @@ No Dashboard allowlist is required for `completion_redirect_uri` (custom scheme)
 | `POST /item/public_token/exchange` | public_token → access_token + item_id |
 | `POST /transactions/sync` | Incremental transaction updates (cursor-based) |
 | `POST /transactions/refresh` | On-demand bank pull (optional add-on; Force bank refresh) |
-| `POST /transactions/recurring/get` | Subscription / payroll streams (optional add-on) |
 | `POST /accounts/get` | Balances and credit limits |
 | `POST /item/get` + `/institutions/get_by_id` | Institution id, login errors, logo, primary color |
 | `POST /liabilities/get` | Credit APR, min payment, due dates, statement balance |
@@ -117,6 +115,7 @@ Plaid amount convention:
 - **Person to Person** rows (Zelle, Venmo, Cash App, Square Cash, PayPal, Apple Cash) are kept. Money sent counts as spend in the **Person to Person** category. Money received is listed under Income but isn't part of Total Income.  
 - **Balance transfers** on a card are filed as **Balance Transfer**, excluded from spend. Their fees stay in **Fees**.  
 - **Payroll:** after each Sync, a paycheck-sized deposit from a source Plaid has tagged as salary or wages elsewhere is labeled **Payroll**, because Plaid can tag an employer that's also a merchant as a purchase.  
+- **Data repair.** `Plaid/DataRepair.swift` runs at launch (once per `version`) and after every Plaid or Wallet sync: rewrites names with odd spaces to plain ones (Wallet's `Apple\u{00A0}Card`), deletes `applecard:` file rows that a `applewallet:` row duplicates (same cents, within a day), and files unlocked catch-all rows by the merchant's usual category (75% of its other rows), plus Transit at a merchant that's otherwise Gas.
 - **One Sync for every screen.** `Plaid/AppSync.swift` runs Apple Card first, so its payments are there for the bank lines to match, then `PlaidSyncEngine.syncAll`. Transactions and the Accounts pull-to-refresh both call it and show its one-line `headline`, with the counters behind **Details**.
 - **Apple Card** comes from FinanceKit in `Wallet/WalletSync.swift`, not Plaid. It needs the `com.apple.developer.financekit` entitlement, which Apple grants per bundle ID, and `NSFinancialDataUsageDescription`. `FinanceStore.isDataAvailable` is true only on iPhone. The liability account becomes a `BankAccount` with `itemId` `apple-wallet`, which `pruneOrphanBankAccounts` leaves alone. FinanceKit doesn't say whether credit or debit means a purchase on a card, so the commoner mark among point-of-sale lines is taken as a charge. `accountBalances` returns every snapshot, so the newest `booked` balance is used; it includes remaining installments, which FinanceKit doesn't break out. A monthly installment arrives as an untyped charge with no merchant code. `WalletFiling` turns each line into a row: payments become Credit Card Payment with a card-side `CreditCardPayment`, which `pairVaguePaymentsWithCards` then matches to a bank's bare PAYMENT line; refunds, installments, interest, and fees get their own categories; purchases use a learned rule, then the merchant category code, then the title. Rows keep the id `applewallet:<uuid>`, and a line that an old `applecard:` file-import row already covers is skipped.  
 - **Learned rules** (`VendorRulesStore`) map a vendor, and optionally a card, to a category. A rule can also cover one exact amount of a vendor, which is how a bare PAYMENT line keeps separate categories for separate bills. An amount rule wins over a general one.  

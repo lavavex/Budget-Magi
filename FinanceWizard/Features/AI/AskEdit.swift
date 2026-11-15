@@ -24,7 +24,7 @@ struct AskEditProposal: Equatable {
         /// Replaces every category limit and the overall monthly limit.
         case budget(limits: [String: Double], monthly: Double)
         case limit(category: String, amount: Double)
-        /// `marker` is what the Recurring tab stores: a cadence, "cancelled", or "none".
+        /// `marker` is what the Upcoming tab stores: a cadence, "cancelled", or "none".
         case recurring(transactionIds: [String], vendor: String, marker: String)
     }
 
@@ -225,7 +225,7 @@ enum AskEdit {
             .contains(where: lower.hasPrefix)
     }
 
-    /// Every charge from the same vendor as the ones named, as the Recurring tab groups them.
+    /// Every charge from the same vendor as the ones named, as the Upcoming tab groups them.
     static func recurringProposal(named merchant: String, asked question: String, marker: String, in rows: [Transaction]) -> AskEditProposal? {
         // A bill the app already tracks comes first, so "Kindle" means the "Amazon Kindle"
         // subscription and not a one-off purchase titled "Kindle".

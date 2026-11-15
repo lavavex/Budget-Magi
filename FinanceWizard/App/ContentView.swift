@@ -13,6 +13,7 @@ import SwiftData
 struct ContentView: View {
     @AppStorage(ScreenshotPrivacy.storageKey) private var screenshotPrivacy = false
     @Environment(\.horizontalSizeClass) private var sizeClass
+    @Environment(\.modelContext) private var modelContext
     @State private var selectedTab: AppTab = Self.launchTab
     /// Only build heavy tabs after the user opens them (first switch is still work; launch is not).
     @State private var loadedTabs: Set<AppTab> = [.home, Self.launchTab]
@@ -118,7 +119,11 @@ struct ContentView: View {
         .sheet(item: $askRequest, onDismiss: refreshAskChat) { request in
             OnDeviceAIChatView(initialQuestion: request.question)
         }
-        .task { refreshAskChat() }
+        .task {
+            refreshAskChat()
+            // Data left by earlier versions: invisible spaces, Apple Card twice, old catch-alls.
+            DataRepair.runIfNeeded(modelContext: modelContext)
+        }
         .alert("Your data couldn’t be opened", isPresented: $showStoreRecovered) {
             Button("OK", role: .cancel) { AppStoreRecovery.needsNotice = false }
         } message: {

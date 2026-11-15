@@ -130,3 +130,7 @@ Plaid can't link Apple Card, so Budget Magi reads it from Wallet. On your iPhone
 ## Welcome screen
 
 Welcome appears only on first launch. Later launches go straight to the tabs. To see Welcome again (testers): **Settings → Developer → Debug → Replay onboarding**.
+
+### Apple Card shows twice, or a purchase counts twice
+
+If you brought in Apple Card from a CSV file before connecting it in Settings, the same purchase could exist from both. The app removes the file copy of any purchase Wallet also has (same amount, within a day) and keeps one Apple Card. Older rows stuck in **Miscellaneous** take the category that merchant has everywhere else, unless you set one yourself.

@@ -98,10 +98,8 @@ struct TransactionRowView: View {
         }
     }
 
-    /// Banks post or drop a hold within a few days. One still pending after ten days most
-    /// likely fell off and the bank never told Plaid.
     private var isLongPending: Bool {
-        transaction.date < Date().addingTimeInterval(-10 * 24 * 60 * 60)
+        TransactionAnalytics.isStalePending(transaction)
     }
 
     /// A nickname first, then the account's display name, so a card Plaid calls "CREDIT CARD"

@@ -242,7 +242,7 @@ struct DebugMenuView: View {
         switch action {
         case .resetCursors:
             PlaidItemStore.resetAllCursors()
-            statusMessage = "Cursors cleared. Tap Sync on Transactions."
+            statusMessage = "Cursors cleared. Sync on Home to download history again."
         case .clearVendorRules:
             VendorRulesStore.save([])
             statusMessage = "Vendor rules cleared."

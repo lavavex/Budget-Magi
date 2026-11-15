@@ -262,7 +262,15 @@ enum TransactionAnalytics {
 
     /// Rows that count toward spend / utilization of budget categories.
     static func spendOnly(_ transactions: [Transaction]) -> [Transaction] {
-        transactions.filter { !isExcludedFromSpend($0) }
+        let now = Date()
+        return transactions.filter { !isExcludedFromSpend($0) && !isStalePending($0, now: now) }
+    }
+
+    /// A hold the bank never posted or released. Banks settle a hold within a few days, so one
+    /// still pending after two weeks almost certainly dropped; it stays listed but isn't spending.
+    static func isStalePending(_ transaction: Transaction, now: Date = Date()) -> Bool {
+        guard transaction.isPending == true else { return false }
+        return transaction.date < now.addingTimeInterval(-14 * 24 * 60 * 60)
     }
 
     static func cardName(for transaction: Transaction) -> String {

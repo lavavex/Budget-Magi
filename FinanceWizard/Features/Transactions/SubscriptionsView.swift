@@ -25,6 +25,8 @@ struct SubscriptionsView: View {
     /// A bill and the override waiting on the confirmation dialog.
     @State private var pendingOverride: (item: SubscriptionCandidate, value: String)?
     @State private var workTitle = ""
+    /// Bills marked cancelled that charged again afterward, so they're back with a note.
+    @State private var chargedAgain: Set<String> = []
 
     @Environment(\.modelContext) private var modelContext
 
@@ -453,15 +455,23 @@ struct SubscriptionsView: View {
                     LabeledContent("Next charge", value: next.formatted(date: .abbreviated, time: .omitted))
                 }
             } footer: {
-                Text(item.confidenceNote)
+                if chargedAgain.contains(item.normalizedVendor) {
+                    Text("Charged again after you marked it cancelled. \(item.confidenceNote)")
+                } else {
+                    Text(item.confidenceNote)
+                }
             }
             Section {
+                let isChargingAgain = chargedAgain.contains(item.normalizedVendor)
                 if wasCancelled {
                     Button("Mark active again") {
                         Task { await applyOverride(nil, on: item) }
                     }
                     .disabled(isSpinning)
-                } else if showCancelledButton {
+                }
+                // Charged again after being marked: it can be marked cancelled once more,
+                // which covers the new charges too.
+                if (!wasCancelled || isChargingAgain), showCancelledButton {
                     Button("It's cancelled") { pendingOverride = (item, "cancelled") }
                         .disabled(isSpinning)
                 }
@@ -516,6 +526,11 @@ struct SubscriptionsView: View {
                 Text(item.displayVendor)
                     .font(.body.weight(.semibold))
                     .lineLimit(2)
+                if chargedAgain.contains(item.normalizedVendor) {
+                    Text("Charged again after you marked it cancelled")
+                        .font(.caption)
+                        .foregroundStyle(.orange)
+                }
                 if let next = nextChargeDate(for: item), next > Date() {
                     Text("\(item.cadence.displayName) · next \(next.formatted(date: .abbreviated, time: .omitted))")
                         .font(.caption)
@@ -584,7 +599,9 @@ struct SubscriptionsView: View {
         }.value
         await logWork("Detector returned \(found.count) group(s)")
         await logWork("Building cancelled-vendor set")
-        let cancelledVendors = SubscriptionAnalytics.cancelledVendors(in: transactions)
+        let cancellations = SubscriptionAnalytics.cancellations(in: transactions)
+        let cancelledVendors = cancellations.cancelled
+        chargedAgain = cancellations.chargedAgain
         await logWork("\(cancelledVendors.count) cancelled vendor(s)")
         let active = found.filter { SubscriptionAnalytics.isActive($0) && !cancelledVendors.contains($0.normalizedVendor) }
         let endedGroups = found.filter { !SubscriptionAnalytics.isActive($0) || cancelledVendors.contains($0.normalizedVendor) }

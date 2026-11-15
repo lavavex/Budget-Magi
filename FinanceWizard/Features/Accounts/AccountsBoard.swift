@@ -567,23 +567,26 @@ struct UnifiedCardLabel: View {
                 }
             }
 
-            HStack {
-                MoneyText(row.spent, prefix: row.statementSpendLabel)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                if row.transactionCount > 0 {
-                    Text("·")
-                        .font(.caption)
-                        .foregroundStyle(.tertiary)
-                    Text(row.transactionCount == 1 ? "1 charge" : "\(row.transactionCount) charges")
+            // Nothing to say for an account with no spending, like a savings account.
+            if row.spent > 0.005 || row.transactionCount > 0 || row.paidInPeriod > 0.005 {
+                HStack {
+                    MoneyText(row.spent, prefix: row.statementSpendLabel)
                         .font(.caption)
                         .foregroundStyle(.secondary)
-                }
-                Spacer()
-                if row.paidInPeriod > 0 {
-                    MoneyText(row.paidInPeriod, prefix: "Paid ")
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(.green)
+                    if row.transactionCount > 0 {
+                        Text("·")
+                            .font(.caption)
+                            .foregroundStyle(.tertiary)
+                        Text(row.transactionCount == 1 ? "1 charge" : "\(row.transactionCount) charges")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    Spacer()
+                    if row.paidInPeriod > 0 {
+                        MoneyText(row.paidInPeriod, prefix: "Paid ")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(.green)
+                    }
                 }
             }
         }

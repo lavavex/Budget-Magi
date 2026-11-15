@@ -171,3 +171,20 @@ enum IncomeAnalytics {
         sorted(inPeriod(rows, period: period, referenceDate: referenceDate), by: sort)
     }
 }
+
+extension Income {
+    /// The name to show. Some banks label a deposit with only a reference code, like
+    /// "2C5FFA70", which names nobody, so it reads as the kind of deposit instead.
+    var displaySource: String {
+        Self.looksLikeReferenceCode(source) ? "\(category) deposit" : source
+    }
+
+    /// One word of 6 or more letters and digits with at least one digit, and no lowercase
+    /// letters: how bank reference codes look, unlike a payer's name.
+    static func looksLikeReferenceCode(_ text: String) -> Bool {
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard trimmed.count >= 6, !trimmed.contains(" ") else { return false }
+        return trimmed.allSatisfy { $0.isNumber || ($0.isLetter && $0.isUppercase) }
+            && trimmed.contains(where: \.isNumber)
+    }
+}

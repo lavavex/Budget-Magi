@@ -92,12 +92,11 @@ Card bill payments only (`Shared/Models/CreditCardPayment.swift`). Never counted
 | `cardName` | Display label for the card |
 | `sourceAccount` | Optional funding account |
 
-## SwiftData: `BudgetPlan` / `RecurringStream` / `PayoffPlan`
+## SwiftData: `BudgetPlan` / `PayoffPlan`
 
 | Model | File | Role |
 |-------|------|------|
 | `BudgetPlan` | `Shared/Models/Budget.swift` | Monthly cap, category limits, expected income (Budget tab; Debug can reset) |
-| `RecurringStream` | `Shared/Models/RecurringStream.swift` | Stored recurring groups used with live detection on the Upcoming tab |
 | `PayoffPlan` | `Shared/Models/PayoffPlan.swift` | User-declared My Loan / Pay Over Time / promo APR / custom payoff on a card |
 
 `PayoffPlan.kindRaw`: `myLoan` | `payOverTime` | `promoAPR` | `custom`. Remaining is user-updated (**Record payment** subtracts `monthlyPayment`; `monthlyFee` does not). Shown on Upcoming like a bill. `linkedTransactionId` is the Pay Over Time purchase **or** the My Loan card charge.
@@ -115,7 +114,7 @@ Payoff projections are amortised, not `remaining ÷ payment`: `PayoffPlanMath.mo
 ```text
 groupContainer: .identifier("group.net.roberth.FinanceWizard")
 store name: FinanceTransactions
-schema: Transaction, Income, BankAccount, CreditCardPayment, BudgetPlan, RecurringStream, PayoffPlan
+schema: Transaction, Income, BankAccount, CreditCardPayment, BudgetPlan, PayoffPlan
 ```
 
 Both app and widget call `SharedStore.makeContainer()`.

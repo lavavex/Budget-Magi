@@ -31,10 +31,14 @@ enum AskLedger {
     static func accountsNamed(in question: String, among accounts: [BankAccount]) -> [BankAccount] {
         let text = question.lowercased()
         let digits = Set(text.split { !$0.isNumber }.map(String.init))
+        // A last four is exact; "Chase 0820" names one card even though "Chase" names four.
+        let byMask = accounts.filter { account in
+            account.mask.map { $0.count >= 4 && digits.contains($0) } ?? false
+        }
+        if !byMask.isEmpty { return byMask }
         return accounts.filter { account in
-            if let mask = account.mask, mask.count >= 4, digits.contains(mask) { return true }
             // The name without its last four, e.g. "blue cash everyday®".
-            let name = account.displayName.lowercased()
+            let name = account.displayName.plainSpaces.lowercased()
                 .replacingOccurrences(of: "···", with: " ")
                 .split(separator: " ")
                 .filter { !$0.allSatisfy(\.isNumber) }
@@ -86,6 +90,22 @@ enum AskLedger {
         let startLabel = monthLabel(start)
         let label = start == lastStart ? startLabel : "\(startLabel) through \(monthLabel(lastStart))"
         return MonthRange(start: start, end: end, label: label)
+    }
+
+    /// "This year", "so far this year", "YTD" and "last year" name exact months, so the
+    /// question decides them rather than the model, which sometimes starts the range at the
+    /// last month or two.
+    static func yearRange(in question: String, now: Date = .now, calendar: Calendar = .current) -> MonthRange? {
+        let lower = " " + question.lowercased() + " "
+        let year = calendar.component(.year, from: now)
+        let month = calendar.component(.month, from: now)
+        if lower.contains(" this year") || lower.contains(" ytd") || lower.contains(" year to date") {
+            return monthRange(from: "\(year)-01", to: String(format: "%d-%02d", year, month), now: now, calendar: calendar)
+        }
+        if lower.contains(" last year") {
+            return monthRange(from: "\(year - 1)-01", to: "\(year - 1)-12", now: now, calendar: calendar)
+        }
+        return nil
     }
 
     private static func thisMonth(now: Date, calendar: Calendar) -> Date {
@@ -143,6 +163,7 @@ enum AskLedger {
         merchant: String,
         category: String,
         range: MonthRange,
+        account: BankAccount? = nil,
         in context: ModelContext
     ) -> Spending {
         let start = range.start
@@ -151,10 +172,12 @@ enum AskLedger {
             predicate: #Predicate { $0.date >= start && $0.date < end }
         ))) ?? []
         let filters = spendingFilters(merchant: merchant, category: category, categoriesInUse: rows.map(\.category))
-        let merchantKey = searchKey(filters.merchant)
+        // "On my Apple Card" names the card, not a store, so the card's name isn't a merchant.
+        let merchantKey = account.map { namesAccount(filters.merchant, $0) } == true ? "" : searchKey(filters.merchant)
         let wantedCategory = filters.category
 
         let matching = rows.filter { row in
+            if let account, !account.matchesPaymentMethod(row.paymentMethod) { return false }
             if !merchantKey.isEmpty, !matchesMerchant(row, key: merchantKey) { return false }
             return true
         }
@@ -173,6 +196,7 @@ enum AskLedger {
             var parts: [String] = []
             if !wantedCategory.isEmpty { parts.append("on \(wantedCategory)") }
             if !merchantKey.isEmpty { parts.append("at \(filters.merchant)") }
+            if let account { parts.append("on \(account.displayName)") }
             return parts.isEmpty ? "" : " " + parts.joined(separator: " ")
         }()
         let headline: String
@@ -236,6 +260,19 @@ enum AskLedger {
     ]
 
     /// Letters and digits only, so "Corner-Market" and "corner market" match.
+    /// Whether a merchant the model passed is really the account the question named, like
+    /// "Chase 0820 card" for Chase ···0820.
+    static func namesAccount(_ merchant: String, _ account: BankAccount) -> Bool {
+        let key = searchKey(merchant)
+        guard !key.isEmpty else { return true }
+        let full = searchKey(account.displayName.plainSpaces)
+        let name = searchKey(account.displayName.plainSpaces.filter { !$0.isNumber })
+        if full.contains(key) { return true }
+        if !name.isEmpty, key.contains(name) { return true }
+        if let mask = account.mask, mask.count >= 4, key.contains(mask) { return true }
+        return false
+    }
+
     static func searchKey(_ text: String) -> String {
         text.lowercased().filter { $0.isLetter || $0.isNumber }
     }

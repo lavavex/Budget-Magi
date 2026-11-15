@@ -39,7 +39,7 @@ struct IncomeRowView: View {
             }
 
             VStack(alignment: .leading, spacing: 4) {
-                Text(income.source)
+                Text(income.displaySource)
                     .font(.body)
                 Text(
                     "\(income.category) · \(ScreenshotPrivacy.cardText(accountLabel ?? income.accountDisplay, privacy: screenshotPrivacy))"
@@ -88,7 +88,7 @@ struct IncomeDetailView: View {
                         .frame(width: 44)
 
                     VStack(alignment: .leading, spacing: 4) {
-                        Text(income.source)
+                        Text(income.displaySource)
                             .font(.title3.weight(.semibold))
                         MoneyText(income.amount)
                             .font(.title2.bold())
